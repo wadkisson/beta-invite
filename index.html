@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .doors {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 3;
+    }
+
+    .doors.approaching {
+      animation: doorsApproach 1.2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+      pointer-events: none;
+    }
+
+    .doors.approaching .door {
+      animation: doorsFadeOut 0.6s 0.4s ease-out forwards;
+    }
+
+    @keyframes doorsApproach {
+      from { transform: translate(-50%, -50%) scale(1); }
+      to { transform: translate(-50%, -50%) scale(12); }
+    }
+
+    @keyframes doorsFadeOut {
+      to { opacity: 0; }
+    }
+
+    .door {
+      width: 200px;
+      height: 300px;
+      object-fit: contain;
+      display: block;
+      cursor: pointer;
+    }
+
+    .door:hover {
+      opacity: 0.9;
+    }
+
+    .ski-background {
+      position: fixed;
+      inset: 0;
+      background: url('background.jpg') center/cover no-repeat;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .ski-background.visible {
+      animation: bgFadeIn 0.8s 0.3s ease-out forwards;
+    }
+
+    @keyframes bgFadeIn {
+      to { opacity: 1; }
+    }
+
+    .title-block {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .title-block.visible {
+      animation: titleFadeIn 0.8s 4.3s ease-out forwards;
+      pointer-events: auto;
+    }
+
+    @keyframes titleFadeIn {
+      to { opacity: 1; }
+    }
+
+    .title-block .subtitle {
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: clamp(14px, 3vw, 24px);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 0.5em;
+    }
+
+    .title-block .main-title {
+      color: #000;
+      font-family: Impact, 'Arial Black', sans-serif;
+      font-size: clamp(48px, 12vw, 120px);
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      -webkit-text-stroke: 3px rgba(255,255,255,0.6);
+      text-shadow: 0 0 30px rgba(255,255,255,0.4), 0 0 60px rgba(180,220,255,0.3);
+    }
+
+    .title-block .date {
+      color: #000;
+      font-family: Impact, 'Arial Black', sans-serif;
+      font-size: clamp(48px, 12vw, 120px);
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      -webkit-text-stroke: 3px rgba(255,255,255,0.6);
+      text-shadow: 0 0 30px rgba(255,255,255,0.4), 0 0 60px rgba(180,220,255,0.3);
+      margin-top: 0.3em;
+    }
+
+    .attend-btn {
+      margin-top: 2.5em;
+      padding: 0.75em 1.5em;
+      background: #0a1628;
+      color: #fff;
+      border: none;
+      font-family: Georgia, serif;
+      font-size: clamp(14px, 2vw, 18px);
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+      opacity: 0;
+    }
+
+    .title-block.visible .attend-btn {
+      animation: btnFadeIn 0.5s 7.1s ease-out forwards;
+    }
+
+    @keyframes btnFadeIn {
+      to { opacity: 1; }
+    }
+
+    .attend-btn:hover:not(.clicked) {
+      background: #152642;
+    }
+
+    .attend-btn.clicked {
+      background: #555;
+      color: #999;
+      cursor: default;
+    }
+
+    .snowfall {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      opacity: 0;
+    }
+
+    .snowfall.visible {
+      animation: snowFadeIn 0.8s 4.3s ease-out forwards;
+    }
+
+    @keyframes snowFadeIn {
+      to { opacity: 1; }
+    }
+
+    .snowfall .snowflake {
+      position: absolute;
+      background: radial-gradient(circle at 30% 30%, #fff, rgba(255,255,255,0.6));
+      border-radius: 50%;
+      top: -20px;
+      box-shadow: 0 0 6px rgba(255,255,255,0.8);
+    }
+
+    .snowfall .snowflake.flake-sm {
+      width: 2px; height: 2px;
+      animation: snowFall 35s ease-in-out infinite;
+      opacity: 0.9;
+    }
+    .snowfall .snowflake.flake-md {
+      width: 4px; height: 4px;
+      animation: snowFall 28s ease-in-out infinite;
+      opacity: 0.85;
+    }
+    .snowfall .snowflake.flake-lg {
+      width: 6px; height: 6px;
+      animation: snowFall 22s ease-in-out infinite;
+      opacity: 0.7;
+    }
+
+    @keyframes snowFall {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(15px, 25vh); }
+      50% { transform: translate(-10px, 50vh); }
+      75% { transform: translate(8px, 75vh); }
+      100% { transform: translate(0, 100vh); }
+    }
+  </style>
+</head>
+<body>
+  <div class="doors">
+    <img class="door" src="door.png" alt="Doors">
+  </div>
+  <div class="ski-background" id="skiBackground"></div>
+  <div class="snowfall" id="snowfall"></div>
+  <div class="title-block" id="titleBlock">
+    <div class="subtitle">Beta Theta Pi presents...</div>
+    <div class="main-title">SKI LODGE</div>
+    <div class="date">2/28</div>
+    <button class="attend-btn" id="attendBtn">I'll be there</button>
+  </div>
+  <audio id="song" src="song.mp3" preload="auto"></audio>
+
+  <script>
+    const doors = document.querySelector('.doors');
+    const skiBackground = document.getElementById('skiBackground');
+    const song = document.getElementById('song');
+    const titleBlock = document.getElementById('titleBlock');
+    const attendBtn = document.getElementById('attendBtn');
+    const snowfall = document.getElementById('snowfall');
+
+    const sizes = ['flake-sm', 'flake-md', 'flake-lg'];
+    for (let i = 0; i < 40; i++) {
+      const flake = document.createElement('span');
+      flake.className = 'snowflake ' + sizes[i % 3];
+      flake.style.left = (i * 2.5 + Math.random() * 5) + '%';
+      flake.style.animationDelay = (Math.random() * 20) + 's';
+      snowfall.appendChild(flake);
+    }
+
+    attendBtn.addEventListener('click', () => {
+      attendBtn.classList.add('clicked');
+      attendBtn.textContent = 'Dress warm';
+    });
+
+    function fadeInAudio(audio, duration = 3000) {
+      audio.volume = 0;
+      audio.play().catch(() => {});
+      const start = performance.now();
+      function step(now) {
+        const elapsed = now - start;
+        const t = Math.min(elapsed / duration, 1);
+        audio.volume = t * t * t; // cubic ease-in: stays quiet longer, then rises
+        if (audio.volume < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    doors.addEventListener('click', () => {
+      song.currentTime = 26;
+      fadeInAudio(song);
+      doors.classList.add('approaching');
+      skiBackground.classList.add('visible');
+      titleBlock.classList.add('visible');
+      snowfall.classList.add('visible');
+    });
+  </script>
+</body>
+</html>
