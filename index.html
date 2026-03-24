@@ -41,6 +41,9 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
       opacity: 0;
       transform: scale(0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     .intro.show-box .intro-box {
@@ -61,6 +64,8 @@
       color: #111;
       min-height: 4.5em;
       white-space: pre-wrap;
+      text-align: center;
+      width: 100%;
     }
 
     .intro-text .cursor {
@@ -160,8 +165,8 @@
       <p class="intro-text" id="typedLine" aria-live="polite">
         <span id="typedText"></span><span class="cursor" id="cursor">|</span>
       </p>
-      <button type="button" class="open-btn" id="openBtn">Open</button>
-    </div>
+      <button type="button" class="open-btn" id="openBtn">View Message</button>
+    </div> 
   </div>
 
   <div class="scene door-scene" id="doorScene">
@@ -179,7 +184,7 @@
     const doorScene = document.getElementById('doorScene');
 
     const line1 = 'You have received a Confidential message.';
-    const line2 = 'Press the Open button.';
+    const line2 = 'Would you like to view it?';
 
     const DOOR_ANIM_MS = 1200;
     const BLACK_HOLD_MS = 2000;
