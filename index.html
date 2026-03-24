@@ -20,7 +20,7 @@
       justify-content: center;
     }
 
-    /* —— Message (hidden until after door + delay) —— */
+    /* —— Confidential message —— */
     .intro {
       z-index: 10;
       background: #000;
@@ -115,57 +115,6 @@
       background: #3a3a3a;
     }
 
-    /* —— Door —— */
-    .door-scene {
-      z-index: 3;
-      transition: opacity 0.2s ease, visibility 0.2s;
-    }
-
-    .door-scene.is-hidden {
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .doors {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      cursor: pointer;
-      z-index: 3;
-    }
-
-    .doors.approaching {
-      animation: doorsApproach 1.2s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
-      pointer-events: none;
-    }
-
-    .doors.approaching .door {
-      animation: doorsFadeOut 0.6s 0.4s ease-out forwards;
-    }
-
-    @keyframes doorsApproach {
-      from { transform: translate(-50%, -50%) scale(1); }
-      to { transform: translate(-50%, -50%) scale(12); }
-    }
-
-    @keyframes doorsFadeOut {
-      to { opacity: 0; }
-    }
-
-    .door {
-      width: 200px;
-      height: 300px;
-      object-fit: contain;
-      display: block;
-      cursor: pointer;
-    }
-
-    .door:hover {
-      opacity: 0.9;
-    }
-
     /* —— Matrix-style binary rain —— */
     .matrix-canvas {
       position: fixed;
@@ -186,7 +135,7 @@
       background: transparent;
     }
 
-    /* —— TEST + Yes —— */
+    /* —— TEST (final) —— */
     .test-screen {
       position: fixed;
       inset: 0;
@@ -196,7 +145,6 @@
       align-items: center;
       justify-content: center;
       background: #000;
-      gap: 1.25rem;
     }
 
     .test-screen[hidden] {
@@ -212,34 +160,6 @@
       text-align: center;
     }
 
-    .yes-btn {
-      padding: 0.65em 2.25em;
-      font-size: clamp(16px, 4vw, 22px);
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #000;
-      background: #00ff66;
-      border: 2px solid #00ff66;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .yes-btn:hover {
-      filter: brightness(1.08);
-    }
-
-    /* —— Final background image —— */
-    .background-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 14;
-      background: #000 url('background.jpg') center / cover no-repeat;
-    }
-
-    .background-screen[hidden] {
-      display: none !important;
-    }
   </style>
 </head>
 <body>
@@ -247,10 +167,7 @@
 
   <div id="testScreen" class="test-screen" hidden aria-hidden="true">
     <h1 class="test-title">TEST</h1>
-    <button type="button" class="yes-btn" id="yesBtn">Yes</button>
   </div>
-
-  <div id="backgroundScreen" class="background-screen" hidden aria-hidden="true"></div>
 
   <div class="scene intro intro--hidden" id="intro" aria-hidden="true">
     <div class="intro-box" id="introBox">
@@ -261,30 +178,17 @@
     </div> 
   </div>
 
-  <div class="scene door-scene" id="doorScene">
-    <div class="doors" id="doors">
-      <img class="door" src="door.png" alt="">
-    </div>
-  </div>
-
   <script>
     const intro = document.getElementById('intro');
     const typedText = document.getElementById('typedText');
     const typedLine = document.getElementById('typedLine');
     const openBtn = document.getElementById('openBtn');
-    const doors = document.getElementById('doors');
-    const doorScene = document.getElementById('doorScene');
     const introBox = document.getElementById('introBox');
     const matrixCanvas = document.getElementById('matrixCanvas');
     const testScreen = document.getElementById('testScreen');
-    const yesBtn = document.getElementById('yesBtn');
-    const backgroundScreen = document.getElementById('backgroundScreen');
 
     const line1 = 'You have received a Confidential message.';
     const line2 = 'Would you like to view it?';
-
-    const DOOR_ANIM_MS = 1200;
-    const BLACK_HOLD_MS = 1000;
 
     let typeAudioCtx = null;
 
@@ -389,20 +293,7 @@
       testScreen.setAttribute('aria-hidden', 'false');
     }
 
-    function showBackgroundScreen() {
-      matrixCanvas.classList.remove('is-active');
-      testScreen.hidden = true;
-      testScreen.setAttribute('aria-hidden', 'true');
-      backgroundScreen.hidden = false;
-      backgroundScreen.setAttribute('aria-hidden', 'false');
-    }
-
-    function startBinaryRain(options) {
-      const onRainEnd =
-        options && typeof options.onRainEnd === 'function'
-          ? options.onRainEnd
-          : showTestScreen;
-
+    function startBinaryRain() {
       const ctx = matrixCanvas.getContext('2d');
       const cellSize = 16;
       const fallSpeed = 1;
@@ -492,7 +383,7 @@
           cancelAnimationFrame(matrixRaf);
           matrixRaf = null;
         }
-        onRainEnd();
+        showTestScreen();
       }
 
       resizeRain();
@@ -501,25 +392,6 @@
       window.setTimeout(endRain, BINARY_RAIN_MS);
     }
 
-    yesBtn.addEventListener('click', () => {
-      testScreen.hidden = true;
-      testScreen.setAttribute('aria-hidden', 'true');
-      startBinaryRain({ onRainEnd: showBackgroundScreen });
-    });
-
-    doors.addEventListener('click', () => {
-      if (doors.classList.contains('approaching')) return;
-
-      initTypeAudio();
-      doors.classList.add('approaching');
-
-      window.setTimeout(() => {
-        doorScene.classList.add('is-hidden');
-      }, DOOR_ANIM_MS);
-
-      window.setTimeout(showMessage, DOOR_ANIM_MS + BLACK_HOLD_MS);
-    });
-
     openBtn.addEventListener('click', () => {
       if (!openBtn.classList.contains('ready')) return;
       if (introBox.classList.contains('is-fading-out')) return;
@@ -527,6 +399,9 @@
       startBinaryRain();
       introBox.classList.add('is-fading-out');
     });
+
+    initTypeAudio();
+    showMessage();
   </script>
 </body>
 </html>
