@@ -50,26 +50,17 @@
       animation: boxPop 0.35s ease forwards;
     }
 
-    /* Replaces boxPop so opacity isn’t stuck by animation fill; 3s fade */
+    /* Instant hide (overrides boxPop fill) */
     .intro.show-box .intro-box.is-fading-out {
-      animation: messageBoxFadeOut 3s ease forwards;
+      animation: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
       pointer-events: none;
     }
 
     @keyframes boxPop {
       to {
         opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes messageBoxFadeOut {
-      from {
-        opacity: 1;
-        transform: scale(1);
-      }
-      to {
-        opacity: 0;
         transform: scale(1);
       }
     }
@@ -312,37 +303,6 @@
 
     const BINARY_RAIN_MS = 3000;
 
-    /** 5×7 grids: each cell is '0' or '1' (drawn as that digit, green). */
-    const TEST_BINARY_LETTERS = {
-      T: [
-        '11111',
-        '00100',
-        '00100',
-        '00100',
-        '00100',
-        '00100',
-        '00100',
-      ],
-      E: [
-        '11111',
-        '10000',
-        '10000',
-        '11110',
-        '10000',
-        '10000',
-        '11111',
-      ],
-      S: [
-        '01111',
-        '10000',
-        '10000',
-        '01110',
-        '00001',
-        '00001',
-        '11110',
-      ],
-    };
-
     function startBinaryRain() {
       const ctx = matrixCanvas.getContext('2d');
       const cellSize = 16;
@@ -396,46 +356,12 @@
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, w, h);
 
-        const word = ['T', 'E', 'S', 'T'];
-        const letterGapCells = 2;
-        const patRows = TEST_BINARY_LETTERS.T.length;
-        let totalCellW = 0;
-        for (let i = 0; i < word.length; i++) {
-          totalCellW += TEST_BINARY_LETTERS[word[i]][0].length;
-          if (i < word.length - 1) totalCellW += letterGapCells;
-        }
-
-        const cell = Math.max(
-          8,
-          Math.min(
-            Math.floor((w * 0.88) / totalCellW),
-            Math.floor((h * 0.45) / patRows),
-            56
-          )
-        );
-
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
+        const fontPx = Math.min(w * 0.22, h * 0.38, 200);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillStyle = '#00ff66';
-        ctx.font =
-          '600 ' + Math.floor(cell * 0.82) + 'px ui-monospace, "Cascadia Code", monospace';
-
-        const blockH = patRows * cell;
-        const blockW = totalCellW * cell;
-        let originX = (w - blockW) / 2;
-        const originY = (h - blockH) / 2;
-
-        let x = originX;
-        for (let li = 0; li < word.length; li++) {
-          const pat = TEST_BINARY_LETTERS[word[li]];
-          for (let r = 0; r < pat.length; r++) {
-            const row = pat[r];
-            for (let c = 0; c < row.length; c++) {
-              ctx.fillText(row[c], x + c * cell, originY + r * cell);
-            }
-          }
-          x += pat[0].length * cell + letterGapCells * cell;
-        }
+        ctx.font = '900 ' + fontPx + 'px Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif';
+        ctx.fillText('TEST', w / 2, h / 2);
       }
 
       function onMatrixResize() {
