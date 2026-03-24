@@ -333,25 +333,11 @@
     const yesSong = document.getElementById('yesSong');
 
     const ACCEPT_BOX_DELAY_MS = 2000;
-    const YES_SONG_START_SEC = 41;
-    const YES_SONG_FADE_MS = 3000;
-    const YES_SONG_DELAY_MS = 500;
-
-    function playYesSongWithFade() {
+    function playYesSong() {
       yesSong.pause();
-      yesSong.currentTime = YES_SONG_START_SEC;
-      yesSong.volume = 0;
-
-      window.setTimeout(() => {
-        yesSong.play().catch(() => {});
-        const start = performance.now();
-        function step(now) {
-          const t = Math.min((now - start) / YES_SONG_FADE_MS, 1);
-          yesSong.volume = t;
-          if (t < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-      }, YES_SONG_DELAY_MS);
+      yesSong.currentTime = 0;
+      yesSong.volume = 1;
+      yesSong.play().catch(() => {});
     }
 
     function startWWIIIScreen() {
@@ -519,7 +505,7 @@
     }
 
     acceptYesBtn.addEventListener('click', () => {
-      playYesSongWithFade();
+      playYesSong();
       acceptBox.hidden = true;
       testScreen.hidden = true;
       testScreen.setAttribute('aria-hidden', 'true');
