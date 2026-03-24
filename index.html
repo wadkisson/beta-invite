@@ -185,10 +185,72 @@
     .intro.intro--with-matrix {
       background: transparent;
     }
+
+    /* —— TEST + Yes —— */
+    .test-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      gap: 1.25rem;
+    }
+
+    .test-screen[hidden] {
+      display: none !important;
+    }
+
+    .test-title {
+      font-family: Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif;
+      font-weight: 900;
+      font-size: min(22vw, 200px);
+      line-height: 1;
+      color: #00ff66;
+      text-align: center;
+    }
+
+    .yes-btn {
+      padding: 0.65em 2.25em;
+      font-size: clamp(16px, 4vw, 22px);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #000;
+      background: #00ff66;
+      border: 2px solid #00ff66;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .yes-btn:hover {
+      filter: brightness(1.08);
+    }
+
+    /* —— Final background image —— */
+    .background-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 14;
+      background: #000 url('background.jpg') center / cover no-repeat;
+    }
+
+    .background-screen[hidden] {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
   <canvas id="matrixCanvas" class="matrix-canvas" aria-hidden="true"></canvas>
+
+  <div id="testScreen" class="test-screen" hidden aria-hidden="true">
+    <h1 class="test-title">TEST</h1>
+    <button type="button" class="yes-btn" id="yesBtn">Yes</button>
+  </div>
+
+  <div id="backgroundScreen" class="background-screen" hidden aria-hidden="true"></div>
 
   <div class="scene intro intro--hidden" id="intro" aria-hidden="true">
     <div class="intro-box" id="introBox">
@@ -214,6 +276,9 @@
     const doorScene = document.getElementById('doorScene');
     const introBox = document.getElementById('introBox');
     const matrixCanvas = document.getElementById('matrixCanvas');
+    const testScreen = document.getElementById('testScreen');
+    const yesBtn = document.getElementById('yesBtn');
+    const backgroundScreen = document.getElementById('backgroundScreen');
 
     const line1 = 'You have received a Confidential message.';
     const line2 = 'Would you like to view it?';
@@ -303,7 +368,41 @@
 
     const BINARY_RAIN_MS = 3000;
 
-    function startBinaryRain() {
+    function paintCanvasBlack() {
+      const ctx = matrixCanvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      matrixCanvas.width = w * dpr;
+      matrixCanvas.height = h * dpr;
+      matrixCanvas.style.width = w + 'px';
+      matrixCanvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function showTestScreen() {
+      paintCanvasBlack();
+      matrixCanvas.classList.add('is-active');
+      testScreen.hidden = false;
+      testScreen.setAttribute('aria-hidden', 'false');
+    }
+
+    function showBackgroundScreen() {
+      matrixCanvas.classList.remove('is-active');
+      testScreen.hidden = true;
+      testScreen.setAttribute('aria-hidden', 'true');
+      backgroundScreen.hidden = false;
+      backgroundScreen.setAttribute('aria-hidden', 'false');
+    }
+
+    function startBinaryRain(options) {
+      const onRainEnd =
+        options && typeof options.onRainEnd === 'function'
+          ? options.onRainEnd
+          : showTestScreen;
+
       const ctx = matrixCanvas.getContext('2d');
       const cellSize = 16;
       const fallSpeed = 1;
@@ -344,29 +443,8 @@
         buildGrid();
       }
 
-      function drawTestWord() {
-        const dpr = window.devicePixelRatio || 1;
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        matrixCanvas.width = w * dpr;
-        matrixCanvas.height = h * dpr;
-        matrixCanvas.style.width = w + 'px';
-        matrixCanvas.style.height = h + 'px';
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
-
-        const fontPx = Math.min(w * 0.22, h * 0.38, 200);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#00ff66';
-        ctx.font = '900 ' + fontPx + 'px Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif';
-        ctx.fillText('TEST', w / 2, h / 2);
-      }
-
       function onMatrixResize() {
         if (phase === 'rain') resizeRain();
-        else drawTestWord();
       }
 
       if (matrixResizeHandler) {
@@ -408,20 +486,26 @@
         matrixRaf = requestAnimationFrame(frame);
       }
 
-      function endRainShowTest() {
-        phase = 'test';
+      function endRain() {
+        phase = 'done';
         if (matrixRaf != null) {
           cancelAnimationFrame(matrixRaf);
           matrixRaf = null;
         }
-        drawTestWord();
+        onRainEnd();
       }
 
       resizeRain();
       matrixCanvas.classList.add('is-active');
       matrixRaf = requestAnimationFrame(frame);
-      window.setTimeout(endRainShowTest, BINARY_RAIN_MS);
+      window.setTimeout(endRain, BINARY_RAIN_MS);
     }
+
+    yesBtn.addEventListener('click', () => {
+      testScreen.hidden = true;
+      testScreen.setAttribute('aria-hidden', 'true');
+      startBinaryRain({ onRainEnd: showBackgroundScreen });
+    });
 
     doors.addEventListener('click', () => {
       if (doors.classList.contains('approaching')) return;
