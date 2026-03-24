@@ -5,14 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title></title>
   <style>
-    * { margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       height: 100%;
       background: #000;
+      overflow: hidden;
+    }
+
+    .scene {
+      position: fixed;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+    }
+
+    /* —— Message (hidden until after door + delay) —— */
+    .intro {
+      z-index: 10;
+      background: #000;
+      transition: opacity 0.35s ease, visibility 0.35s;
+    }
+
+    .intro.intro--hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .intro-box {
+      width: min(92vw, 420px);
+      padding: 1.75rem 1.5rem;
+      background: #6e6e6e;
+      border: 1px solid #555;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    .intro.show-box .intro-box {
+      animation: boxPop 0.35s ease forwards;
+    }
+
+    @keyframes boxPop {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .intro-text {
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: clamp(13px, 3.2vw, 15px);
+      line-height: 1.55;
+      color: #111;
+      min-height: 4.5em;
+      white-space: pre-wrap;
+    }
+
+    .intro-text .cursor {
+      display: inline-block;
+      animation: blink 0.85s step-end infinite;
+      margin-left: 1px;
+    }
+
+    .intro-text.done .cursor {
+      display: none;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .open-btn {
+      margin-top: 1.25rem;
+      padding: 0.55rem 1.35rem;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: #2a2a2a;
+      color: #eee;
+      border: 1px solid #1a1a1a;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: background 0.2s, opacity 0.35s ease;
+    }
+
+    .open-btn.ready {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .open-btn.ready:hover {
+      background: #3a3a3a;
+    }
+
+    /* —— Door —— */
+    .door-scene {
+      z-index: 3;
+      transition: opacity 0.2s ease, visibility 0.2s;
+    }
+
+    .door-scene.is-hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
     }
 
     .doors {
@@ -53,38 +152,130 @@
     .door:hover {
       opacity: 0.9;
     }
-
-    .white-reveal {
-      position: fixed;
-      inset: 0;
-      background: #fff;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .white-reveal.visible {
-      animation: revealFadeIn 0.8s 0.3s ease-out forwards;
-    }
-
-    @keyframes revealFadeIn {
-      to { opacity: 1; }
-    }
   </style>
 </head>
 <body>
-  <div class="white-reveal" id="whiteReveal"></div>
-  <div class="doors" id="doors">
-    <img class="door" src="door.png" alt="">
+  <div class="scene intro intro--hidden" id="intro" aria-hidden="true">
+    <div class="intro-box">
+      <p class="intro-text" id="typedLine" aria-live="polite">
+        <span id="typedText"></span><span class="cursor" id="cursor">|</span>
+      </p>
+      <button type="button" class="open-btn" id="openBtn">Open</button>
+    </div>
+  </div>
+
+  <div class="scene door-scene" id="doorScene">
+    <div class="doors" id="doors">
+      <img class="door" src="door.png" alt="">
+    </div>
   </div>
 
   <script>
+    const intro = document.getElementById('intro');
+    const typedText = document.getElementById('typedText');
+    const typedLine = document.getElementById('typedLine');
+    const openBtn = document.getElementById('openBtn');
     const doors = document.getElementById('doors');
-    const whiteReveal = document.getElementById('whiteReveal');
+    const doorScene = document.getElementById('doorScene');
+
+    const line1 = 'You have received a Confidential message.';
+    const line2 = 'Press the Open button.';
+
+    const DOOR_ANIM_MS = 1200;
+    const BLACK_HOLD_MS = 2000;
+
+    let typeAudioCtx = null;
+
+    function initTypeAudio() {
+      if (!typeAudioCtx) {
+        typeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (typeAudioCtx.state === 'suspended') {
+        typeAudioCtx.resume();
+      }
+    }
+
+    /** Short RPG-style dialogue blip per visible character (Web Audio, no file). */
+    function playDialogueBlip() {
+      if (!typeAudioCtx) return;
+      const t = typeAudioCtx.currentTime;
+      const osc = typeAudioCtx.createOscillator();
+      const gain = typeAudioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(680 + Math.random() * 120, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.1, t + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      osc.connect(gain);
+      gain.connect(typeAudioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.05);
+    }
+
+    function blipForChar(ch) {
+      if (!ch || /\s/.test(ch)) return;
+      playDialogueBlip();
+    }
+
+    function runTypewriter() {
+      typedText.textContent = '';
+      typedLine.classList.remove('done');
+      openBtn.classList.remove('ready');
+
+      let i = 0;
+      const msPerChar = 42;
+
+      function tick() {
+        if (i < line1.length) {
+          const ch = line1[i];
+          typedText.textContent += ch;
+          blipForChar(ch);
+          i++;
+          setTimeout(tick, msPerChar);
+          return;
+        }
+        typedText.textContent += '\n\n';
+        i = 0;
+        function tick2() {
+          if (i < line2.length) {
+            const ch = line2[i];
+            typedText.textContent += ch;
+            blipForChar(ch);
+            i++;
+            setTimeout(tick2, msPerChar);
+            return;
+          }
+          typedLine.classList.add('done');
+          openBtn.classList.add('ready');
+        }
+        tick2();
+      }
+
+      setTimeout(tick, 280);
+    }
+
+    function showMessage() {
+      intro.classList.remove('intro--hidden');
+      intro.classList.add('show-box');
+      intro.setAttribute('aria-hidden', 'false');
+      runTypewriter();
+    }
 
     doors.addEventListener('click', () => {
+      if (doors.classList.contains('approaching')) return;
+
+      initTypeAudio();
       doors.classList.add('approaching');
-      whiteReveal.classList.add('visible');
+
+      window.setTimeout(() => {
+        doorScene.classList.add('is-hidden');
+      }, DOOR_ANIM_MS);
+
+      window.setTimeout(showMessage, DOOR_ANIM_MS + BLACK_HOLD_MS);
+    });
+
+    openBtn.addEventListener('click', () => {
+      /* placeholder — nothing for now */
     });
   </script>
 </body>
