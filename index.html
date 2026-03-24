@@ -86,7 +86,10 @@
     }
 
     .open-btn {
+      display: block;
       margin-top: 1.25rem;
+      margin-left: auto;
+      margin-right: auto;
       padding: 0.55rem 1.35rem;
       font-family: inherit;
       font-size: 14px;
@@ -309,7 +312,7 @@
       <p class="intro-text" id="typedLine" aria-live="polite">
         <span id="typedText"></span><span class="cursor" id="cursor">|</span>
       </p>
-      <button type="button" class="open-btn" id="openBtn">Open</button>
+      <button type="button" class="open-btn" id="openBtn">View</button>
     </div>
   </div>
 
@@ -331,7 +334,7 @@
     const yesSong = document.getElementById('yesSong');
 
     const ACCEPT_BOX_DELAY_MS = 2000;
-    const YES_SONG_START_SEC = 40;
+    const YES_SONG_START_SEC = 41;
     const YES_SONG_FADE_MS = 3000;
     const YES_SONG_DELAY_MS = 500;
 
@@ -455,7 +458,7 @@
     const TERMINAL_MS_PER_CHAR = 32;
 
     const line1 = 'You have received a Confidential message.';
-    const line2 = 'Press the Open button.';
+    const line2 = 'Would you like to view it?';
 
     let typeAudioCtx = null;
 
