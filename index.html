@@ -50,9 +50,26 @@
       animation: boxPop 0.35s ease forwards;
     }
 
+    /* Replaces boxPop so opacity isn’t stuck by animation fill; 3s fade */
+    .intro.show-box .intro-box.is-fading-out {
+      animation: messageBoxFadeOut 3s ease forwards;
+      pointer-events: none;
+    }
+
     @keyframes boxPop {
       to {
         opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes messageBoxFadeOut {
+      from {
+        opacity: 1;
+        transform: scale(1);
+      }
+      to {
+        opacity: 0;
         transform: scale(1);
       }
     }
@@ -157,11 +174,33 @@
     .door:hover {
       opacity: 0.9;
     }
+
+    /* —— Matrix-style binary rain —— */
+    .matrix-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .matrix-canvas.is-active {
+      opacity: 1;
+    }
+
+    .intro.intro--with-matrix {
+      background: transparent;
+    }
   </style>
 </head>
 <body>
+  <canvas id="matrixCanvas" class="matrix-canvas" aria-hidden="true"></canvas>
+
   <div class="scene intro intro--hidden" id="intro" aria-hidden="true">
-    <div class="intro-box">
+    <div class="intro-box" id="introBox">
       <p class="intro-text" id="typedLine" aria-live="polite">
         <span id="typedText"></span><span class="cursor" id="cursor">|</span>
       </p>
@@ -182,12 +221,14 @@
     const openBtn = document.getElementById('openBtn');
     const doors = document.getElementById('doors');
     const doorScene = document.getElementById('doorScene');
+    const introBox = document.getElementById('introBox');
+    const matrixCanvas = document.getElementById('matrixCanvas');
 
     const line1 = 'You have received a Confidential message.';
     const line2 = 'Would you like to view it?';
 
     const DOOR_ANIM_MS = 1200;
-    const BLACK_HOLD_MS = 2000;
+    const BLACK_HOLD_MS = 1000;
 
     let typeAudioCtx = null;
 
@@ -266,6 +307,196 @@
       runTypewriter();
     }
 
+    let matrixRaf = null;
+    let matrixResizeHandler = null;
+
+    const BINARY_RAIN_MS = 3000;
+
+    /** 5×7 grids: each cell is '0' or '1' (drawn as that digit, green). */
+    const TEST_BINARY_LETTERS = {
+      T: [
+        '11111',
+        '00100',
+        '00100',
+        '00100',
+        '00100',
+        '00100',
+        '00100',
+      ],
+      E: [
+        '11111',
+        '10000',
+        '10000',
+        '11110',
+        '10000',
+        '10000',
+        '11111',
+      ],
+      S: [
+        '01111',
+        '10000',
+        '10000',
+        '01110',
+        '00001',
+        '00001',
+        '11110',
+      ],
+    };
+
+    function startBinaryRain() {
+      const ctx = matrixCanvas.getContext('2d');
+      const cellSize = 16;
+      const fallSpeed = 1;
+      let phase = 'rain';
+      let cols = 0;
+      let rows = 0;
+      let padX = 0;
+      let grid = [];
+      let scroll = 0;
+
+      function randomBit() {
+        return Math.random() > 0.5 ? '1' : '0';
+      }
+
+      function buildGrid() {
+        grid = [];
+        for (let c = 0; c < cols; c++) {
+          grid[c] = [];
+          for (let r = 0; r < rows; r++) {
+            grid[c][r] = randomBit();
+          }
+        }
+      }
+
+      function resizeRain() {
+        const dpr = window.devicePixelRatio || 1;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        matrixCanvas.width = w * dpr;
+        matrixCanvas.height = h * dpr;
+        matrixCanvas.style.width = w + 'px';
+        matrixCanvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cols = Math.floor(w / cellSize);
+        rows = Math.ceil(h / cellSize) + 2;
+        padX = (w - cols * cellSize) / 2;
+        scroll = 0;
+        buildGrid();
+      }
+
+      function drawTestWord() {
+        const dpr = window.devicePixelRatio || 1;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        matrixCanvas.width = w * dpr;
+        matrixCanvas.height = h * dpr;
+        matrixCanvas.style.width = w + 'px';
+        matrixCanvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+
+        const word = ['T', 'E', 'S', 'T'];
+        const letterGapCells = 2;
+        const patRows = TEST_BINARY_LETTERS.T.length;
+        let totalCellW = 0;
+        for (let i = 0; i < word.length; i++) {
+          totalCellW += TEST_BINARY_LETTERS[word[i]][0].length;
+          if (i < word.length - 1) totalCellW += letterGapCells;
+        }
+
+        const cell = Math.max(
+          8,
+          Math.min(
+            Math.floor((w * 0.88) / totalCellW),
+            Math.floor((h * 0.45) / patRows),
+            56
+          )
+        );
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#00ff66';
+        ctx.font =
+          '600 ' + Math.floor(cell * 0.82) + 'px ui-monospace, "Cascadia Code", monospace';
+
+        const blockH = patRows * cell;
+        const blockW = totalCellW * cell;
+        let originX = (w - blockW) / 2;
+        const originY = (h - blockH) / 2;
+
+        let x = originX;
+        for (let li = 0; li < word.length; li++) {
+          const pat = TEST_BINARY_LETTERS[word[li]];
+          for (let r = 0; r < pat.length; r++) {
+            const row = pat[r];
+            for (let c = 0; c < row.length; c++) {
+              ctx.fillText(row[c], x + c * cell, originY + r * cell);
+            }
+          }
+          x += pat[0].length * cell + letterGapCells * cell;
+        }
+      }
+
+      function onMatrixResize() {
+        if (phase === 'rain') resizeRain();
+        else drawTestWord();
+      }
+
+      if (matrixResizeHandler) {
+        window.removeEventListener('resize', matrixResizeHandler);
+      }
+      matrixResizeHandler = onMatrixResize;
+      window.addEventListener('resize', matrixResizeHandler);
+
+      function frame() {
+        if (phase !== 'rain') return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.font =
+          '600 ' + (cellSize - 3) + 'px ui-monospace, "Cascadia Code", monospace';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#00ff66';
+
+        scroll += fallSpeed;
+        if (scroll >= cellSize) {
+          scroll -= cellSize;
+          for (let c = 0; c < cols; c++) {
+            grid[c].shift();
+            grid[c].push(randomBit());
+          }
+        }
+
+        for (let r = 0; r < rows; r++) {
+          const y = r * cellSize + scroll + cellSize / 2;
+          if (y < -cellSize / 2 || y > h + cellSize / 2) continue;
+          for (let c = 0; c < cols; c++) {
+            const x = padX + c * cellSize + cellSize / 2;
+            ctx.fillText(grid[c][r], x, y);
+          }
+        }
+
+        matrixRaf = requestAnimationFrame(frame);
+      }
+
+      function endRainShowTest() {
+        phase = 'test';
+        if (matrixRaf != null) {
+          cancelAnimationFrame(matrixRaf);
+          matrixRaf = null;
+        }
+        drawTestWord();
+      }
+
+      resizeRain();
+      matrixCanvas.classList.add('is-active');
+      matrixRaf = requestAnimationFrame(frame);
+      window.setTimeout(endRainShowTest, BINARY_RAIN_MS);
+    }
+
     doors.addEventListener('click', () => {
       if (doors.classList.contains('approaching')) return;
 
@@ -280,7 +511,11 @@
     });
 
     openBtn.addEventListener('click', () => {
-      /* placeholder — nothing for now */
+      if (!openBtn.classList.contains('ready')) return;
+      if (introBox.classList.contains('is-fading-out')) return;
+      intro.classList.add('intro--with-matrix');
+      startBinaryRain();
+      introBox.classList.add('is-fading-out');
     });
   </script>
 </body>
