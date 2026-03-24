@@ -227,7 +227,7 @@
       text-decoration: underline;
     }
 
-    /* —— WWIII binary glyph (after Yes) —— */
+    /* —— WWIII screen (after Yes) —— */
     .wwiii-screen {
       position: fixed;
       inset: 0;
@@ -257,15 +257,15 @@
       gap: 0.25em;
     }
 
-    .wwiii-screen pre {
+    .wwiii-title {
       margin: 0;
       font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-      font-size: clamp(10px, 2.1vw, 22px);
-      line-height: 1;
-      letter-spacing: 0.12em;
+      font-size: clamp(28px, 9vw, 64px);
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: 0.18em;
       color: #00ff66;
-      text-shadow: 0 0 6px rgba(0, 255, 80, 0.35);
-      white-space: pre;
+      text-shadow: 0 0 10px rgba(0, 255, 80, 0.35);
       user-select: none;
     }
 
@@ -298,7 +298,7 @@
 
   <div id="wwiiiScreen" class="wwiii-screen" hidden aria-hidden="true">
     <div class="wwiii-screen-inner">
-      <pre id="wwiiiArt"></pre>
+      <p class="wwiii-title">WWIII</p>
       <div class="wwiii-meta">
         <div class="wwiii-date">3/28</div>
         <div class="wwiii-date">House 22</div>
@@ -330,7 +330,6 @@
     const acceptBox = document.getElementById('acceptBox');
     const acceptYesBtn = document.getElementById('acceptYesBtn');
     const wwiiiScreen = document.getElementById('wwiiiScreen');
-    const wwiiiArt = document.getElementById('wwiiiArt');
     const yesSong = document.getElementById('yesSong');
 
     const ACCEPT_BOX_DELAY_MS = 2000;
@@ -355,96 +354,9 @@
       }, YES_SONG_DELAY_MS);
     }
 
-    /**
-     * Strokes are 3 chars thick (111). I stem is 5 wide (center).
-     * 1 = stroke (toggles 1↔0 each tick), 0 = empty (space).
-     */
-    const WWIII_LETTER_W = [
-      '11100000000111',
-      '11100000000111',
-      '11100000000111',
-      '11100001100111',
-      '11100011110111',
-      '11100111111111',
-      '11101111111111',
-      '11111111111111',
-      '11111111111111',
-      '11111101111111',
-      '11111000111111',
-      '11110000011111',
-      '11100000001111',
-      '11100000000111',
-    ];
-    /** Top/bottom bars 3 rows × full width; vertical stem 5 wide (cols 3–7). */
-    const WWIII_LETTER_I = [
-      '11111111111',
-      '11111111111',
-      '11111111111',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '00011111000',
-      '11111111111',
-      '11111111111',
-      '11111111111',
-    ];
-
-    let wwiiiIntervalId = null;
-    let wwiiiPhase = 0;
-
-    function buildWWIIIPatternRows() {
-      const gap = '    ';
-      const h = WWIII_LETTER_W.length;
-      const rows = [];
-      for (let r = 0; r < h; r++) {
-        rows.push(
-          WWIII_LETTER_W[r] +
-            gap +
-            WWIII_LETTER_W[r] +
-            gap +
-            WWIII_LETTER_I[r] +
-            gap +
-            WWIII_LETTER_I[r] +
-            gap +
-            WWIII_LETTER_I[r]
-        );
-      }
-      return rows;
-    }
-
-    const WWIII_PATTERN_ROWS = buildWWIIIPatternRows();
-
-    function renderWWIIIArt() {
-      const phase = wwiiiPhase;
-      const lines = WWIII_PATTERN_ROWS.map((row) =>
-        row
-          .split('')
-          .map((ch) => {
-            if (ch === '1') return phase % 2 === 0 ? '1' : '0';
-            return ' ';
-          })
-          .join('')
-      );
-      wwiiiArt.textContent = lines.join('\n');
-    }
-
     function startWWIIIScreen() {
-      if (wwiiiIntervalId != null) {
-        clearInterval(wwiiiIntervalId);
-        wwiiiIntervalId = null;
-      }
-      wwiiiPhase = 0;
       wwiiiScreen.hidden = false;
       wwiiiScreen.setAttribute('aria-hidden', 'false');
-      renderWWIIIArt();
-      wwiiiIntervalId = window.setInterval(() => {
-        wwiiiPhase += 1;
-        renderWWIIIArt();
-      }, 1000);
     }
 
     /** ALL CAPS: type → hold → clear until last line; last line stays (no clear/hide). */
