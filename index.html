@@ -135,29 +135,142 @@
       background: transparent;
     }
 
-    /* —— TEST (final) —— */
-    .test-screen {
+    /* —— Green terminal text (centered stack: prompt + Yes) —— */
+    .terminal-ui {
       position: fixed;
       inset: 0;
       z-index: 12;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #000;
+      padding: 16px;
+      pointer-events: none;
     }
 
-    .test-screen[hidden] {
+    .terminal-ui[hidden] {
       display: none !important;
     }
 
-    .test-title {
-      font-family: Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif;
-      font-weight: 900;
-      font-size: min(22vw, 200px);
-      line-height: 1;
+    .terminal-line {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: clamp(26px, 6.4vw, 30px);
+      line-height: 1.45;
       color: #00ff66;
+      text-shadow: 0 0 8px rgba(0, 255, 80, 0.25);
+      max-width: calc(100vw - 32px);
       text-align: center;
+    }
+
+    .terminal-line .terminal-cursor {
+      display: inline-block;
+      animation: termBlink 0.9s step-end infinite;
+      margin-left: 1px;
+      color: #00ff66;
+    }
+
+    .terminal-line.typing-done .terminal-cursor {
+      animation: termBlink 1s step-end infinite;
+    }
+
+    /* Last prompt: no cursor; text flashes in/out after typing. */
+    .terminal-line.final-prompt .terminal-cursor {
+      display: none;
+    }
+
+    .terminal-line.final-prompt {
+      animation: terminalPromptFlash 1.1s ease-in-out infinite;
+    }
+
+    @keyframes terminalPromptFlash {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0;
+      }
+    }
+
+    @keyframes termBlink {
+      50% { opacity: 0; }
+    }
+
+    .terminal-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .accept-mini {
+      pointer-events: auto;
+      border: 2px solid #00ff66;
+      padding: 12px 28px;
+      background: #000;
+    }
+
+    .accept-mini[hidden] {
+      display: none !important;
+    }
+
+    .accept-mini button {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 28px;
+      color: #00ff66;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .accept-mini button:hover {
+      text-decoration: underline;
+    }
+
+    /* —— WWIII binary glyph (after Yes) —— */
+    .wwiii-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      pointer-events: none;
+    }
+
+    .wwiii-screen[hidden] {
+      display: none !important;
+    }
+
+    .wwiii-screen-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35em;
+    }
+
+    .wwiii-screen pre {
+      margin: 0;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: clamp(10px, 2.1vw, 22px);
+      line-height: 1;
+      letter-spacing: 0.12em;
+      color: #00ff66;
+      text-shadow: 0 0 6px rgba(0, 255, 80, 0.35);
+      white-space: pre;
+      user-select: none;
+    }
+
+    .wwiii-date {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-size: max(12px, calc(1.25 * clamp(10px, 2.1vw, 22px)));
+      font-weight: 600;
+      color: #00ff66;
+      text-shadow: 0 0 4px rgba(0, 255, 80, 0.3);
+      letter-spacing: 0.06em;
     }
 
   </style>
@@ -165,8 +278,22 @@
 <body>
   <canvas id="matrixCanvas" class="matrix-canvas" aria-hidden="true"></canvas>
 
-  <div id="testScreen" class="test-screen" hidden aria-hidden="true">
-    <h1 class="test-title">TEST</h1>
+  <div id="testScreen" class="terminal-ui" hidden aria-hidden="true">
+    <div class="terminal-stack">
+      <div class="terminal-line" id="terminalBody" aria-live="polite">
+        <span id="terminalOutput"></span><span class="terminal-cursor" id="terminalCursor">▍</span>
+      </div>
+      <div id="acceptBox" class="accept-mini" hidden>
+        <button type="button" id="acceptYesBtn">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="wwiiiScreen" class="wwiii-screen" hidden aria-hidden="true">
+    <div class="wwiii-screen-inner">
+      <pre id="wwiiiArt"></pre>
+      <div class="wwiii-date">3/28</div>
+    </div>
   </div>
 
   <div class="scene intro intro--hidden" id="intro" aria-hidden="true">
@@ -186,6 +313,117 @@
     const introBox = document.getElementById('introBox');
     const matrixCanvas = document.getElementById('matrixCanvas');
     const testScreen = document.getElementById('testScreen');
+    const terminalBody = document.getElementById('terminalBody');
+    const terminalOutput = document.getElementById('terminalOutput');
+    const terminalCursor = document.getElementById('terminalCursor');
+    const acceptBox = document.getElementById('acceptBox');
+    const acceptYesBtn = document.getElementById('acceptYesBtn');
+    const wwiiiScreen = document.getElementById('wwiiiScreen');
+    const wwiiiArt = document.getElementById('wwiiiArt');
+
+    const ACCEPT_BOX_DELAY_MS = 2000;
+
+    /**
+     * Strokes are 3 chars thick (111). I stem is 5 wide (center).
+     * 1 = stroke (toggles 1↔0 each tick), 0 = empty (space).
+     */
+    const WWIII_LETTER_W = [
+      '11100000000111',
+      '11100000000111',
+      '11100000000111',
+      '11100001100111',
+      '11100011110111',
+      '11100111111111',
+      '11101111111111',
+      '11111111111111',
+      '11111111111111',
+      '11111101111111',
+      '11111000111111',
+      '11110000011111',
+      '11100000001111',
+      '11100000000111',
+    ];
+    /** Top/bottom bars 3 rows × full width; vertical stem 5 wide (cols 3–7). */
+    const WWIII_LETTER_I = [
+      '11111111111',
+      '11111111111',
+      '11111111111',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '00011111000',
+      '11111111111',
+      '11111111111',
+      '11111111111',
+    ];
+
+    let wwiiiIntervalId = null;
+    let wwiiiPhase = 0;
+
+    function buildWWIIIPatternRows() {
+      const gap = '    ';
+      const h = WWIII_LETTER_W.length;
+      const rows = [];
+      for (let r = 0; r < h; r++) {
+        rows.push(
+          WWIII_LETTER_W[r] +
+            gap +
+            WWIII_LETTER_W[r] +
+            gap +
+            WWIII_LETTER_I[r] +
+            gap +
+            WWIII_LETTER_I[r] +
+            gap +
+            WWIII_LETTER_I[r]
+        );
+      }
+      return rows;
+    }
+
+    const WWIII_PATTERN_ROWS = buildWWIIIPatternRows();
+
+    function renderWWIIIArt() {
+      const phase = wwiiiPhase;
+      const lines = WWIII_PATTERN_ROWS.map((row) =>
+        row
+          .split('')
+          .map((ch) => {
+            if (ch === '1') return phase % 2 === 0 ? '1' : '0';
+            return ' ';
+          })
+          .join('')
+      );
+      wwiiiArt.textContent = lines.join('\n');
+    }
+
+    function startWWIIIScreen() {
+      if (wwiiiIntervalId != null) {
+        clearInterval(wwiiiIntervalId);
+        wwiiiIntervalId = null;
+      }
+      wwiiiPhase = 0;
+      wwiiiScreen.hidden = false;
+      wwiiiScreen.setAttribute('aria-hidden', 'false');
+      renderWWIIIArt();
+      wwiiiIntervalId = window.setInterval(() => {
+        wwiiiPhase += 1;
+        renderWWIIIArt();
+      }, 1000);
+    }
+
+    /** ALL CAPS: type → hold → clear until last line; last line stays (no clear/hide). */
+    const TERMINAL_MESSAGES = [
+      'ATTENTION: THIS IS AN OFFICIAL TRANSMISSION',
+      'A ZOMBIE OUTBREAK HAS OCCURRED',
+      'YOU HAVE BEEN SELECTED TO HELP CONTAIN THE OUTBREAK',
+      'DO YOU ACCEPT?',
+    ];
+    const TERMINAL_MESSAGE_HOLD_MS = 1500;
+    const TERMINAL_MS_PER_CHAR = 32;
 
     const line1 = 'You have received a Confidential message.';
     const line2 = 'Would you like to view it?';
@@ -270,7 +508,7 @@
     let matrixRaf = null;
     let matrixResizeHandler = null;
 
-    const BINARY_RAIN_MS = 3000;
+    const BINARY_RAIN_MS = 2000;
 
     function paintCanvasBlack() {
       const ctx = matrixCanvas.getContext('2d');
@@ -286,11 +524,68 @@
       ctx.fillRect(0, 0, w, h);
     }
 
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function clearTerminalLine() {
+      terminalOutput.textContent = '';
+      terminalBody.classList.remove('typing-done', 'final-prompt');
+    }
+
+    function typeTerminalLine(text, msPerChar) {
+      return new Promise((resolve) => {
+        terminalOutput.textContent = '';
+        terminalBody.classList.remove('typing-done');
+        let i = 0;
+        const step = () => {
+          if (i < text.length) {
+            terminalOutput.textContent += text[i];
+            blipForChar(text[i]);
+            i++;
+            setTimeout(step, msPerChar);
+          } else {
+            terminalBody.classList.add('typing-done');
+            resolve();
+          }
+        };
+        step();
+      });
+    }
+
+    async function runTerminalMessages() {
+      terminalBody.classList.remove('final-prompt');
+      acceptBox.hidden = true;
+      testScreen.setAttribute('aria-hidden', 'false');
+      testScreen.hidden = false;
+      const lastIndex = TERMINAL_MESSAGES.length - 1;
+      for (let m = 0; m < TERMINAL_MESSAGES.length; m++) {
+        await typeTerminalLine(TERMINAL_MESSAGES[m], TERMINAL_MS_PER_CHAR);
+        if (m < lastIndex) {
+          await sleep(TERMINAL_MESSAGE_HOLD_MS);
+          clearTerminalLine();
+        } else {
+          terminalBody.classList.remove('typing-done');
+          terminalBody.classList.add('final-prompt');
+          window.setTimeout(() => {
+            acceptBox.hidden = false;
+          }, ACCEPT_BOX_DELAY_MS);
+        }
+      }
+    }
+
+    acceptYesBtn.addEventListener('click', () => {
+      acceptBox.hidden = true;
+      testScreen.hidden = true;
+      testScreen.setAttribute('aria-hidden', 'true');
+      matrixCanvas.classList.remove('is-active');
+      startWWIIIScreen();
+    });
+
     function showTestScreen() {
       paintCanvasBlack();
       matrixCanvas.classList.add('is-active');
-      testScreen.hidden = false;
-      testScreen.setAttribute('aria-hidden', 'false');
+      runTerminalMessages();
     }
 
     function startBinaryRain() {
