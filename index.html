@@ -3,15 +3,594 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title></title>
+  <title>Cowboy Alien Hunt</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     html, body {
+      width: 100%;
       height: 100%;
-      background: #000;
       overflow: hidden;
+      background: #8fd3ff;
+      font-family: Arial, sans-serif;
+      touch-action: none;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
     }
   </style>
 </head>
-<body></body>
+<body>
+  <canvas id="game" aria-label="Cowboy alien hunting game"></canvas>
+
+  <script>
+    const canvas = document.querySelector("#game");
+    const context = canvas.getContext("2d");
+
+    const ALIEN_SIZE = 52;
+    const ALIEN_ASPECT_RATIO = 291 / 370;
+    const ALIEN_SPEED = 110;
+    const SPAWN_DELAY = 900;
+    const MAX_ALIENS = 5;
+    const GROUND_HEIGHT = 110;
+    const STARTING_SHOTS = 10;
+    const WINNING_HITS = 3;
+    const GAME_OVER_DURATION = 10000;
+    const BLACK_GAME_OVER_DURATION = 5000;
+    const GAME_OVER_BLINK_SPEED = 500;
+    const SUCCESS_MESSAGE_DURATION = 2000;
+    const FINAL_SUCCESS_MESSAGE_DURATION = 3000;
+    const SUCCESS_MESSAGE_FADE_DURATION = 200;
+    const SUCCESS_SEQUENCE_DURATION =
+      SUCCESS_MESSAGE_DURATION * 3 + FINAL_SUCCESS_MESSAGE_DURATION;
+    const POSTER_REVEAL_DELAY = 200;
+    const POSTER_ALIEN_COUNT = 10;
+    const POSTER_TRAIL_LENGTH = 24;
+    const SUCCESS_SONG_START = 15;
+    const SUCCESS_SONG_FULL_VOLUME_AT = 25;
+    const SUCCESS_SONG_START_VOLUME = 0.1;
+    const PISTOL_SOUND_START = 1.38;
+    const PISTOL_GAIN = 4;
+    const GAME_OVER_SOUND_START = 0.84;
+    const pistolSound = new Audio("./Pistol Sound Effect.mp3");
+    pistolSound.preload = "auto";
+    const pistolAudioContext = new AudioContext();
+    let pistolBuffer = null;
+    const gameOverSound = new Audio("./gameover.mp3");
+    gameOverSound.preload = "auto";
+    const successSong = new Audio("./Sauce It Up.mp3");
+    successSong.preload = "auto";
+    const alienImage = new Image();
+    alienImage.src = "./alien.svg";
+    const cowboyImage = new Image();
+    cowboyImage.src = "./alex_cowboy_v2.svg";
+    const posterImage = new Image();
+    posterImage.src = "./poster.jpeg";
+
+    fetch("./Pistol Sound Effect.mp3")
+      .then((response) => response.arrayBuffer())
+      .then((audioData) => pistolAudioContext.decodeAudioData(audioData))
+      .then((decodedAudio) => {
+        pistolBuffer = decodedAudio;
+      });
+
+    const game = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      aliens: [],
+      shotsRemaining: STARTING_SHOTS,
+      hits: 0,
+      lastSpawn: 0,
+      lastFrame: performance.now(),
+      flashUntil: 0,
+      crosshair: null,
+      phase: "playing",
+      gameOverAt: null,
+      blackGameOverAt: null,
+      successStartedAt: null,
+      posterShotAt: null,
+      posterAliens: []
+    };
+
+    /** Keeps the canvas sharp while coordinates stay in CSS pixels. */
+    function resizeCanvas() {
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      game.width = window.innerWidth;
+      game.height = window.innerHeight;
+      canvas.width = Math.round(game.width * pixelRatio);
+      canvas.height = Math.round(game.height * pixelRatio);
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    }
+
+    /** Creates one alien at the right edge. */
+    function spawnAlien() {
+      const playableHeight = Math.max(
+        ALIEN_SIZE,
+        game.height - GROUND_HEIGHT - ALIEN_SIZE - 75
+      );
+
+      game.aliens.push({
+        x: game.width + ALIEN_SIZE,
+        y: 55 + Math.random() * playableHeight,
+        size: ALIEN_SIZE,
+        speed: ALIEN_SPEED + Math.random() * 55
+      });
+    }
+
+    /** Creates one small ambient alien for the poster background. */
+    function createPosterAlien() {
+      return {
+        x: Math.random() * game.width,
+        y: Math.random() * game.height,
+        size: 36 + Math.random() * 36,
+        speed: 35 + Math.random() * 45,
+        direction: Math.random() < 0.5 ? -1 : 1,
+        verticalSpeed: -12 + Math.random() * 24,
+        trail: []
+      };
+    }
+
+    /** Moves poster aliens and records the points used by their trails. */
+    function updatePosterAliens(elapsedSeconds) {
+      for (const alien of game.posterAliens) {
+        alien.trail.unshift({ x: alien.x, y: alien.y });
+        if (alien.trail.length > POSTER_TRAIL_LENGTH) {
+          alien.trail.pop();
+        }
+
+        alien.x += alien.speed * alien.direction * elapsedSeconds;
+        alien.y += alien.verticalSpeed * elapsedSeconds;
+
+        if (alien.y < 0 || alien.y + alien.size > game.height) {
+          alien.verticalSpeed *= -1;
+        }
+
+        const leftScreen = alien.x + alien.size < 0;
+        const rightScreen = alien.x > game.width + alien.size;
+        if (leftScreen || rightScreen) {
+          alien.x = alien.direction > 0 ? -alien.size : game.width + alien.size;
+          alien.y = Math.random() * game.height;
+          alien.trail = [];
+        }
+      }
+    }
+
+    /** Plays the supplied pistol clip from its first audible moment. */
+    function playGunSound() {
+      if (pistolBuffer) {
+        pistolAudioContext.resume();
+
+        const source = pistolAudioContext.createBufferSource();
+        const gain = pistolAudioContext.createGain();
+        source.buffer = pistolBuffer;
+        gain.gain.value = PISTOL_GAIN;
+        source.connect(gain);
+        gain.connect(pistolAudioContext.destination);
+        source.start(0, PISTOL_SOUND_START);
+        return;
+      }
+
+      const shot = pistolSound.cloneNode();
+      shot.volume = 1;
+      shot.currentTime = PISTOL_SOUND_START;
+      shot.play();
+    }
+
+    /** Plays the game-over clip once its leading silence has passed. */
+    function playGameOverSound() {
+      gameOverSound.currentTime = GAME_OVER_SOUND_START;
+      gameOverSound.play();
+    }
+
+    /** Starts the success song at its requested point. */
+    function playSuccessSong() {
+      successSong.volume = SUCCESS_SONG_START_VOLUME;
+      successSong.currentTime = SUCCESS_SONG_START;
+      successSong.play();
+    }
+
+    /** Raises the song smoothly from 10% at 15s to 100% at 25s. */
+    function updateSuccessSongVolume() {
+      if (successSong.paused) {
+        return;
+      }
+
+      const rampDuration = SUCCESS_SONG_FULL_VOLUME_AT - SUCCESS_SONG_START;
+      const progress = Math.min(
+        Math.max((successSong.currentTime - SUCCESS_SONG_START) / rampDuration, 0),
+        1
+      );
+      successSong.volume =
+        SUCCESS_SONG_START_VOLUME +
+        progress * (1 - SUCCESS_SONG_START_VOLUME);
+    }
+
+    /** Fires on every tap and removes an alien when hit. */
+    function shoot(event) {
+      if (game.phase !== "playing") {
+        return;
+      }
+
+      const bounds = canvas.getBoundingClientRect();
+      const x = event.clientX - bounds.left;
+      const y = event.clientY - bounds.top;
+
+      game.shotsRemaining -= 1;
+      game.flashUntil = performance.now() + 70;
+      game.crosshair = { x, y, expiresAt: performance.now() + 180 };
+      playGunSound();
+
+      for (let index = game.aliens.length - 1; index >= 0; index -= 1) {
+        const alien = game.aliens[index];
+        const isHit =
+          x >= alien.x &&
+          x <= alien.x + alien.size &&
+          y >= alien.y &&
+          y <= alien.y + alien.size;
+
+        if (isHit) {
+          game.aliens.splice(index, 1);
+          game.hits += 1;
+          break;
+        }
+      }
+
+      if (game.hits >= WINNING_HITS) {
+        game.phase = "successSequence";
+        game.successStartedAt = performance.now();
+        playSuccessSong();
+        return;
+      }
+
+      if (game.shotsRemaining === 0) {
+        game.phase = "gameOver";
+        game.gameOverAt = performance.now();
+        playGameOverSound();
+      }
+    }
+
+    /** Advances aliens and replaces blocks that leave the screen. */
+    function update(elapsedSeconds, now) {
+      updateSuccessSongVolume();
+
+      if (game.phase === "gameOver") {
+        if (now - game.gameOverAt >= GAME_OVER_DURATION) {
+          game.phase = "blackGameOver";
+          game.blackGameOverAt = now;
+        }
+        return;
+      }
+
+      if (game.phase === "blackGameOver") {
+        if (now - game.blackGameOverAt >= BLACK_GAME_OVER_DURATION) {
+          game.phase = "black";
+        }
+        return;
+      }
+
+      if (game.phase === "successSequence") {
+        if (now - game.successStartedAt >= SUCCESS_SEQUENCE_DURATION) {
+          if (game.posterShotAt === null) {
+            game.posterShotAt = now;
+            playGunSound();
+          } else if (now - game.posterShotAt >= POSTER_REVEAL_DELAY) {
+            game.phase = "poster";
+            game.posterAliens = Array.from(
+              { length: POSTER_ALIEN_COUNT },
+              createPosterAlien
+            );
+          }
+        }
+        return;
+      }
+
+      if (game.phase === "poster") {
+        updatePosterAliens(elapsedSeconds);
+        return;
+      }
+
+      if (game.phase === "black") {
+        return;
+      }
+
+      for (const alien of game.aliens) {
+        alien.x -= alien.speed * elapsedSeconds;
+      }
+
+      game.aliens = game.aliens.filter(
+        (alien) => alien.x + alien.size > 0
+      );
+
+      if (
+        game.aliens.length < MAX_ALIENS &&
+        now - game.lastSpawn >= SPAWN_DELAY
+      ) {
+        spawnAlien();
+        game.lastSpawn = now;
+      }
+    }
+
+    /** Draws the blinking game-over message for either background. */
+    function drawGameOverMessage(now, startedAt) {
+      const isVisible =
+        Math.floor((now - startedAt) / GAME_OVER_BLINK_SPEED) % 2 === 0;
+
+      if (!isVisible) {
+        return;
+      }
+
+      const fontSize = Math.min(100, game.width * 0.14);
+      context.fillStyle = "#e32636";
+      context.font = `bold ${fontSize}px Arial`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("GAME OVER", game.width / 2, game.height / 2);
+      context.textAlign = "start";
+      context.textBaseline = "alphabetic";
+    }
+
+    /** Draws bold green lettering with hanging slime drips. */
+    function drawSlimeText(message, fontSize) {
+      context.font = `bold ${fontSize}px Impact, Arial Black, sans-serif`;
+
+      const availableWidth = game.width * 0.85;
+      const measuredWidth = context.measureText(message).width;
+      if (measuredWidth > availableWidth) {
+        fontSize *= availableWidth / measuredWidth;
+        context.font = `bold ${fontSize}px Impact, Arial Black, sans-serif`;
+      }
+
+      context.fillStyle = "#46d62f";
+      context.shadowColor = "#087a26";
+      context.shadowBlur = Math.max(5, fontSize * 0.08);
+      context.shadowOffsetY = Math.max(3, fontSize * 0.04);
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(message, game.width / 2, game.height / 2);
+
+      const textWidth = context.measureText(message).width;
+      const textLeft = (game.width - textWidth) / 2;
+      const dripTop = game.height / 2 + fontSize * 0.3;
+      const dripLengths = [0.12, 0.2, 0.09, 0.17, 0.11, 0.22, 0.14];
+      context.strokeStyle = "#46d62f";
+      context.lineWidth = Math.max(3, fontSize * 0.05);
+      context.lineCap = "round";
+
+      for (let index = 0; index < dripLengths.length; index += 1) {
+        const x = textLeft + textWidth * ((index + 1) / 8);
+        context.beginPath();
+        context.moveTo(x, dripTop);
+        context.lineTo(x, dripTop + fontSize * dripLengths[index]);
+        context.stroke();
+      }
+
+      context.shadowColor = "transparent";
+      context.shadowBlur = 0;
+      context.shadowOffsetY = 0;
+      context.textAlign = "start";
+      context.textBaseline = "alphabetic";
+    }
+
+    /** Draws a block-pixel Glock extending left across the hand. */
+    function drawPixelGlock(handX, handY) {
+      context.fillStyle = "#171717";
+      context.fillRect(handX - 60, handY - 8, 56, 14);
+      context.fillRect(handX - 22, handY + 6, 16, 28);
+      context.fillRect(handX - 28, handY + 6, 22, 6);
+
+      context.fillStyle = "#555";
+      context.fillRect(handX - 54, handY - 6, 40, 4);
+      context.fillStyle = "#050505";
+      context.fillRect(handX - 60, handY - 4, 6, 6);
+    }
+
+    /** Draws glowing green trails and aliens behind the poster. */
+    function drawPosterAliens() {
+      context.save();
+      context.lineWidth = 2;
+      context.lineCap = "round";
+      context.strokeStyle = "#39ff14";
+      context.shadowColor = "#39ff14";
+      context.shadowBlur = 7;
+
+      for (const alien of game.posterAliens) {
+        let previousPoint = alien;
+
+        for (let index = 0; index < alien.trail.length; index += 1) {
+          const trailPoint = alien.trail[index];
+          context.globalAlpha =
+            0.7 * (1 - index / POSTER_TRAIL_LENGTH);
+          context.beginPath();
+          context.moveTo(previousPoint.x, previousPoint.y + alien.size / 2);
+          context.lineTo(trailPoint.x, trailPoint.y + alien.size / 2);
+          context.stroke();
+          previousPoint = trailPoint;
+        }
+
+        const alienWidth = alien.size * ALIEN_ASPECT_RATIO;
+        context.globalAlpha = 1;
+        context.drawImage(
+          alienImage,
+          alien.x + (alien.size - alienWidth) / 2,
+          alien.y,
+          alienWidth,
+          alien.size
+        );
+      }
+
+      context.restore();
+    }
+
+    /** Draws the temporary block-art game scene. */
+    function draw(now) {
+      context.clearRect(0, 0, game.width, game.height);
+
+      if (game.phase === "successSequence") {
+        const elapsed = now - game.successStartedAt;
+        const messages = [
+          "Congratulations",
+          "Welcome...",
+          "To...",
+          "Cowboys Vs Aliens."
+        ];
+        const finalMessageStartsAt = SUCCESS_MESSAGE_DURATION * 3;
+        const isFinalMessage = elapsed >= finalMessageStartsAt;
+        const messageIndex = isFinalMessage
+          ? 3
+          : Math.floor(elapsed / SUCCESS_MESSAGE_DURATION);
+        const message = messages[messageIndex];
+        const currentMessageDuration = isFinalMessage
+          ? FINAL_SUCCESS_MESSAGE_DURATION
+          : SUCCESS_MESSAGE_DURATION;
+        let fontSize = Math.min(110, game.height * 0.18);
+
+        context.fillStyle = "#000";
+        context.fillRect(0, 0, game.width, game.height);
+
+        const messageElapsed = isFinalMessage
+          ? elapsed - finalMessageStartsAt
+          : elapsed % SUCCESS_MESSAGE_DURATION;
+        const fadeIn = Math.min(
+          messageElapsed / SUCCESS_MESSAGE_FADE_DURATION,
+          1
+        );
+        const fadeOut = Math.min(
+          (currentMessageDuration - messageElapsed) /
+            SUCCESS_MESSAGE_FADE_DURATION,
+          1
+        );
+        const opacity = Math.max(0, Math.min(fadeIn, fadeOut));
+
+        context.globalAlpha = opacity;
+        drawSlimeText(message, fontSize);
+        context.globalAlpha = 1;
+        return;
+      }
+
+      if (game.phase === "poster") {
+        const scale = Math.min(
+          (game.width * 0.9) / posterImage.naturalWidth,
+          (game.height * 0.9) / posterImage.naturalHeight
+        );
+        const posterWidth = posterImage.naturalWidth * scale;
+        const posterHeight = posterImage.naturalHeight * scale;
+
+        context.fillStyle = "#000";
+        context.fillRect(0, 0, game.width, game.height);
+        drawPosterAliens();
+        context.drawImage(
+          posterImage,
+          (game.width - posterWidth) / 2,
+          (game.height - posterHeight) / 2,
+          posterWidth,
+          posterHeight
+        );
+        return;
+      }
+
+      if (game.phase === "black" || game.phase === "blackGameOver") {
+        context.fillStyle = "#000";
+        context.fillRect(0, 0, game.width, game.height);
+
+        if (game.phase === "blackGameOver") {
+          drawGameOverMessage(now, game.blackGameOverAt);
+        }
+
+        return;
+      }
+
+      context.fillStyle = "#8fd3ff";
+      context.fillRect(0, 0, game.width, game.height);
+
+      context.fillStyle = "#d6a85f";
+      context.fillRect(
+        0,
+        game.height - GROUND_HEIGHT,
+        game.width,
+        GROUND_HEIGHT
+      );
+
+      for (const alien of game.aliens) {
+        const alienWidth = alien.size * ALIEN_ASPECT_RATIO;
+        context.drawImage(
+          alienImage,
+          alien.x + (alien.size - alienWidth) / 2,
+          alien.y,
+          alienWidth,
+          alien.size
+        );
+      }
+
+      const cowboyWidth = 200;
+      const cowboyHeight = 300;
+      const cowboyX = game.width - cowboyWidth - 25;
+      const cowboyY = game.height - GROUND_HEIGHT - cowboyHeight + 22;
+
+      if (cowboyImage.complete && cowboyImage.naturalWidth > 0) {
+        context.drawImage(
+          cowboyImage,
+          cowboyX,
+          cowboyY,
+          cowboyWidth,
+          cowboyHeight
+        );
+
+        const gunHandX = cowboyX + 94;
+        const gunHandY = cowboyY + 130;
+        drawPixelGlock(gunHandX, gunHandY);
+
+        context.fillStyle = now < game.flashUntil ? "#ffe45c" : "#8fd3ff";
+        context.fillRect(gunHandX - 65, gunHandY - 3, 5, 5);
+      }
+
+      context.fillStyle = "#111";
+      context.font = "bold 20px Arial";
+      context.fillText(`HITS: ${game.hits}`, 22, 34);
+      context.fillText(`BULLETS: ${game.shotsRemaining}`, 22, 61);
+
+      context.font = "bold 16px Arial";
+      context.fillText("TAP AN ALIEN TO SHOOT", 22, game.height - 28);
+
+      if (game.crosshair && now < game.crosshair.expiresAt) {
+        context.strokeStyle = "#e32636";
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(game.crosshair.x - 12, game.crosshair.y);
+        context.lineTo(game.crosshair.x + 12, game.crosshair.y);
+        context.moveTo(game.crosshair.x, game.crosshair.y - 12);
+        context.lineTo(game.crosshair.x, game.crosshair.y + 12);
+        context.stroke();
+      }
+
+      if (game.phase === "gameOver") {
+        drawGameOverMessage(now, game.gameOverAt);
+      }
+    }
+
+    /** Runs the frame-independent update and draw loop. */
+    function gameLoop(now) {
+      const elapsedSeconds = Math.min((now - game.lastFrame) / 1000, 0.05);
+      game.lastFrame = now;
+      update(elapsedSeconds, now);
+      draw(now);
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    canvas.addEventListener("pointerdown", shoot);
+
+    resizeCanvas();
+    spawnAlien();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
 </html>
