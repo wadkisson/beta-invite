@@ -89,7 +89,7 @@
       pointer-events: none;
       animation:
         shatter 0.9s cubic-bezier(0.12, 0.75, 0.2, 1) forwards,
-        shard-fade 4s linear forwards;
+        shard-fade 2s linear forwards;
     }
 
     .shard .pumpkin {
@@ -115,7 +115,7 @@
     }
 
     @keyframes shard-fade {
-      0%, 32% {
+      0%, 50% {
         opacity: 1;
       }
       100% {
@@ -245,13 +245,13 @@
     const KNIFE_URL = encodeURI("./Knife Sound Effect ( HD ) No Copyright.mp3");
     const SONG_URL = encodeURI("./Odd Mob, OMNOM, HYPERBEAM - Take You There (Extended Mix).mp3");
     const KNIFE_CUT_SECONDS = 0.4;
-    const SONG_START_SECONDS = 70;
+    const SONG_START_SECONDS = 80;
     const FLYER_AT_SECONDS = 90;
     const SONG_START_VOLUME = 0.02;
-    const SONG_FADE_SECONDS = 20;
-    const SHARD_FADE_MS = 4000;
-    const OUTLINE_OPEN_MS = 1200;
-    const ZOOM_OUT_MS = 14000;
+    const SONG_FADE_SECONDS = 10;
+    const SHARD_FADE_MS = 2000;
+    const OUTLINE_OPEN_MS = 600;
+    const ZOOM_OUT_MS = 7000;
     const CARVE_STEPS = 3;
     const SHARD_COLUMNS = 4;
     const SHARD_ROWS = 5;
@@ -326,7 +326,7 @@
       });
     }
 
-    /** Covers the page at 1:30 in the track. The song itself starts at 1:10. */
+    /** Covers the page at 1:30 in the track. The song itself starts at 1:20. */
     function scheduleFlyer() {
       window.clearTimeout(flyerTimer);
       flyerTimer = window.setTimeout(showFlyer, (FLYER_AT_SECONDS - SONG_START_SECONDS) * 1000);
@@ -337,7 +337,7 @@
       document.body.classList.add("is-flyer");
     }
 
-    /** Starts the song element at 1:10 and rises linearly to full volume at the drop. */
+    /** Starts the song element at 1:20 and rises linearly to full volume at the drop. */
     function startSongElement() {
       if (songStarted || !songAudio || !songAudio.src) {
         return;
@@ -391,7 +391,7 @@
       }
     }
 
-    /** Plays the decoded song through the audio context at 1:10. */
+    /** Plays the decoded song through the audio context at 1:20. */
     function startSongBuffer() {
       if (songStarted || !songBuffer || !audioContext) {
         return;
