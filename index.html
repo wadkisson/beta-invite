@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pumpkin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nosifer&display=block" rel="stylesheet">
   <style>
     html, body {
       margin: 0;
@@ -26,6 +29,15 @@
       gap: 28px;
     }
 
+    .title {
+      display: grid;
+      place-items: center;
+    }
+
+    .title > * {
+      grid-area: 1 / 1;
+    }
+
     .prompt {
       margin: 0;
       color: #ff8a1f;
@@ -41,6 +53,41 @@
 
     body.is-breaking .prompt {
       animation: fade-out 0.35s linear forwards;
+    }
+
+    /* Above the vignette, so the closing edges never swallow it. */
+    .summon {
+      position: relative;
+      z-index: 31;
+      margin: 0;
+      color: #c40000;
+      font-family: Nosifer, Impact, sans-serif;
+      font-size: clamp(20px, min(7vw, 7vh), 58px);
+      font-weight: 400;
+      line-height: 1.25;
+      letter-spacing: 0.02em;
+      text-align: center;
+      text-shadow: 0 0 18px rgba(0, 0, 0, 0.95), 0 2px 0 #3a0000;
+      visibility: hidden;
+    }
+
+    body.is-breaking .summon {
+      visibility: visible;
+      animation: bleed 2.4s linear both;
+    }
+
+    body.is-flyer .summon {
+      visibility: hidden;
+    }
+
+    /* Runs down from the top like it is being written in blood. */
+    @keyframes bleed {
+      from {
+        clip-path: inset(-50% -50% 100% -50%);
+      }
+      to {
+        clip-path: inset(-50% -50% -50% -50%);
+      }
     }
 
     .pumpkin-stage {
@@ -140,14 +187,11 @@
       }
     }
 
-    body.is-revealed .pumpkin-stage {
-      animation: fade-out 0.8s linear forwards;
-    }
-
+    /* Under the shards, so they fly off over the flyer on the drop. */
     .flyer {
       position: fixed;
       inset: 0;
-      z-index: 20;
+      z-index: 1;
       display: none;
       align-items: center;
       justify-content: center;
@@ -160,11 +204,75 @@
     }
 
     .flyer-slot {
+      position: relative;
+      z-index: 1;
       display: block;
       width: auto;
       height: auto;
       max-width: min(86vw, 520px);
       max-height: 92vh;
+    }
+
+    body.is-flyer .flyer-slot {
+      animation: slam 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    }
+
+    @keyframes slam {
+      from {
+        opacity: 0.2;
+        transform: scale(1.18);
+      }
+    }
+
+    /* Skulls drift up behind the flyer once it lands and bob on each kick. */
+    .skulls {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.2s ease-out;
+    }
+
+    body.is-haunted .skulls {
+      opacity: 1;
+    }
+
+    .skull {
+      position: absolute;
+      bottom: -12vh;
+      left: var(--x);
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+      font-size: var(--size);
+      line-height: 1;
+      opacity: var(--alpha);
+      scale: calc(1 + 0.15 * var(--pulse, 0));
+      animation:
+        skull-rise var(--rise) linear var(--delay) infinite,
+        skull-sway var(--sway) ease-in-out var(--delay) infinite alternate;
+    }
+
+    @keyframes skull-rise {
+      to {
+        translate: 0 -125vh;
+      }
+    }
+
+    @keyframes skull-sway {
+      from {
+        rotate: -18deg;
+        transform: translateX(-3vw);
+      }
+      to {
+        rotate: 18deg;
+        transform: translateX(3vw);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skull {
+        bottom: var(--y);
+        animation: none;
+      }
     }
 
     .vignette {
@@ -197,7 +305,10 @@
 </head>
 <body>
   <div class="scene">
-    <p class="prompt">Click to carve the pumpkin</p>
+    <div class="title">
+      <p class="prompt">Click to carve the pumpkin</p>
+      <h1 class="summon">YOU HAVE BEEN<br>SUMMONED</h1>
+    </div>
     <div class="pumpkin-stage">
       <svg class="person-layer" viewBox="0 0 400 460" aria-hidden="true">
         <defs>
@@ -303,7 +414,8 @@
     </div>
   </div>
   <div class="flyer">
-    <img class="flyer-slot" src="./IMG_0992.JPG" alt="BΘΠ Halloween, House 22, Saturday Oct 31, 10PM">
+    <div class="skulls" aria-hidden="true"></div>
+    <img class="flyer-slot" src="./FLYER_NEW.png" alt="BΘΠ Halloween, House 22, Saturday Oct 31, 9:30PM">
   </div>
   <div class="vignette" aria-hidden="true">
     <div class="vignette-shade"></div>
@@ -319,24 +431,19 @@
     // First kick of the drop, measured from the track. The beat grid is anchored here.
     const DROP_SECONDS = 90.23;
     const BEAT_SECONDS = 60 / 128;
-    // Downbeat six bars after the drop, once the zoom has settled.
-    const FLYER_AT_SECONDS = DROP_SECONDS + 24 * BEAT_SECONDS;
     const SONG_WAIT_MS = 5000;
     const CRACK_GROW = 0.14;
     const HEARTBEAT_SECONDS = 1.3;
     const HEARTBEAT_RACE = 0.12;
     const CARVE_LEVEL = 0.12;
     const BREAK_LEVEL = 0.3;
-    const DROP_LEVEL = 0.6;
     const FLYER_LEVEL = 0.35;
     const SONG_START_VOLUME = 0.02;
     const SONG_FADE_SECONDS = 10;
-    const SHARD_FADE_MS = 2000;
-    const OUTLINE_OPEN_MS = 600;
-    const ZOOM_OUT_MS = 7000;
     const CARVE_STEPS = 3;
     const SHARD_COLUMNS = 4;
     const SHARD_ROWS = 5;
+    const SKULL_COUNT = 18;
 
     let audioContext = null;
     let songGain = null;
@@ -351,7 +458,6 @@
     let decodingSong = false;
     let cueTimer = 0;
     let revealReady = false;
-    let flyerShown = false;
     let carveStep = 0;
     let breaking = false;
     let breakStartedAt = 0;
@@ -414,9 +520,29 @@
       });
     }
 
-    /** Black screen with the party banner. */
+    /** Fills the space around the flyer with skulls, already spread up the screen. */
+    function summonSkulls() {
+      const field = document.querySelector(".skulls");
+      for (let i = 0; i < SKULL_COUNT; i += 1) {
+        const skull = document.createElement("span");
+        skull.className = "skull";
+        skull.textContent = "💀";
+        const rise = 9 + Math.random() * 8;
+        skull.style.setProperty("--x", `${(((i + Math.random()) / SKULL_COUNT) * 100).toFixed(1)}%`);
+        skull.style.setProperty("--y", `${(Math.random() * 90).toFixed(1)}%`);
+        skull.style.setProperty("--size", `${(4 + Math.random() * 6).toFixed(1)}vmin`);
+        skull.style.setProperty("--alpha", (0.35 + Math.random() * 0.45).toFixed(2));
+        skull.style.setProperty("--rise", `${rise.toFixed(1)}s`);
+        skull.style.setProperty("--sway", `${(1.8 + Math.random() * 1.6).toFixed(1)}s`);
+        skull.style.setProperty("--delay", `${(-Math.random() * rise).toFixed(1)}s`);
+        field.appendChild(skull);
+      }
+      document.body.classList.add("is-haunted");
+    }
+
+    /** Slams the party flyer in behind the flying shards, then brings the skulls. */
     function showFlyer() {
-      flyerShown = true;
+      document.querySelector(".flyer-slot").addEventListener("animationend", summonSkulls, { once: true });
       document.body.classList.add("is-flyer");
     }
 
@@ -622,114 +748,6 @@
       }
     }
 
-    /** Eases the zoom so the face pulls back into the full picture. */
-    function easeInOut(progress) {
-      return progress < 0.5
-        ? 2 * progress * progress
-        : 1 - ((-2 * progress + 2) ** 2) / 2;
-    }
-
-    /** Fades the pumpkin outline into the rectangular photo, then zooms. */
-    function openPumpkinOutline() {
-      const layer = document.querySelector(".person-layer");
-      const image = layer.querySelector("image");
-      const box = image.cloneNode(true);
-      box.removeAttribute("clip-path");
-      box.setAttribute("opacity", "0");
-      image.after(box);
-
-      const started = performance.now();
-      function frame(now) {
-        const progress = Math.min((now - started) / OUTLINE_OPEN_MS, 1);
-        box.setAttribute("opacity", String(easeInOut(progress)));
-        if (progress < 1) {
-          requestAnimationFrame(frame);
-          return;
-        }
-
-        box.remove();
-        image.removeAttribute("clip-path");
-        zoomOutPerson();
-        document.body.classList.add("is-revealed");
-      }
-      requestAnimationFrame(frame);
-    }
-
-    /** Zooms the same photo out from the face to the full cutout. */
-    function zoomOutPerson() {
-      const layer = document.querySelector(".person-layer");
-      const image = layer.querySelector("image");
-      const stage = document.querySelector(".pumpkin-stage");
-      const stageRect = stage.getBoundingClientRect();
-      image.removeAttribute("clip-path");
-      layer.style.clipPath = "none";
-      layer.setAttribute("preserveAspectRatio", "none");
-
-      const fromBox = { x: 0, y: 0, w: 400, h: 460 };
-      const fromFrame = {
-        left: stageRect.left,
-        top: stageRect.top,
-        width: stageRect.width,
-        height: stageRect.height
-      };
-      const imageX = Number(image.getAttribute("x"));
-      const imageY = Number(image.getAttribute("y"));
-      const imageW = Number(image.getAttribute("width"));
-      const imageH = Number(image.getAttribute("height"));
-      const viewAspect = window.innerWidth / window.innerHeight;
-      let viewW = imageW / 0.9;
-      let viewH = viewW / viewAspect;
-      if (imageH > viewH * 0.92) {
-        viewH = imageH / 0.92;
-        viewW = viewH * viewAspect;
-      }
-      const toBox = {
-        x: imageX - (viewW - imageW) / 2,
-        y: imageY - (viewH - imageH) / 2,
-        w: viewW,
-        h: viewH
-      };
-      const toFrame = {
-        left: 0,
-        top: 0,
-        width: window.innerWidth,
-        height: window.innerHeight
-      };
-
-      document.body.appendChild(layer);
-      layer.style.position = "fixed";
-      layer.style.margin = "0";
-      layer.style.right = "auto";
-      layer.style.bottom = "auto";
-      layer.style.zIndex = "6";
-
-      const started = performance.now();
-      function frame(now) {
-        const progress = Math.min((now - started) / ZOOM_OUT_MS, 1);
-        const eased = easeInOut(progress);
-        const mix = (start, end) => start + (end - start) * eased;
-        layer.style.left = `${mix(fromFrame.left, toFrame.left)}px`;
-        layer.style.top = `${mix(fromFrame.top, toFrame.top)}px`;
-        layer.style.width = `${mix(fromFrame.width, toFrame.width)}px`;
-        layer.style.height = `${mix(fromFrame.height, toFrame.height)}px`;
-        layer.setAttribute("viewBox", [
-          mix(fromBox.x, toBox.x),
-          mix(fromBox.y, toBox.y),
-          mix(fromBox.w, toBox.w),
-          mix(fromBox.h, toBox.h)
-        ].join(" "));
-        if (progress < 1) {
-          requestAnimationFrame(frame);
-        }
-      }
-      requestAnimationFrame(frame);
-    }
-
-    /** Opens the outline and zooms once the shards have faded. */
-    function revealPerson() {
-      window.setTimeout(openPumpkinOutline, SHARD_FADE_MS);
-    }
-
     /** Plays the first 0.4 seconds of the knife cut. */
     function playKnifeCut() {
       if (!knifeBuffer || !audioContext) {
@@ -823,7 +841,7 @@
         }
       }
 
-      revealPerson();
+      showFlyer();
     }
 
     /** Starts the song and lets the pumpkin crack until the drop breaks it. */
@@ -901,6 +919,8 @@
     const vignetteGlow = document.querySelector(".vignette-glow");
     const vignetteFlash = document.querySelector(".vignette-flash");
     const pumpkinStage = document.querySelector(".pumpkin-stage");
+    const summon = document.querySelector(".summon");
+    const skullField = document.querySelector(".skulls");
     const crackGlows = document.querySelector(".pumpkin .crack-glows");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -996,16 +1016,14 @@
           const sinceDrop = position - DROP_SECONDS;
           flash = Math.exp(-sinceDrop / 0.3);
           pulse = Math.exp(-sinceBeat / 0.16);
-          level = DROP_LEVEL + (1 - DROP_LEVEL) * Math.exp(-sinceDrop / 2);
-          if (position >= FLYER_AT_SECONDS) {
-            level = FLYER_LEVEL;
-            if (!flyerShown) {
-              showFlyer();
-            }
-          }
+          level = FLYER_LEVEL + (1 - FLYER_LEVEL) * Math.exp(-sinceDrop / 2);
+          skullField.style.setProperty("--pulse", pulse.toFixed(3));
         }
       }
 
+      if (breaking && !broken && !reduceMotion) {
+        summon.style.transform = `scale(${(1 + 0.05 * pulse * level).toFixed(4)})`;
+      }
       lastFrame = now;
       paintVignette(level, pulse, flash);
     }
