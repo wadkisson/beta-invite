@@ -3,1037 +3,863 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pumpkin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nosifer&display=block" rel="stylesheet">
+  <meta name="theme-color" content="#000000">
+  <title></title>
   <style>
+    @font-face {
+      font-family: "Knewave";
+      src: url("./fonts/Knewave.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Oswald";
+      src: url("./fonts/Oswald.ttf") format("truetype");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+
     html, body {
       margin: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
       background: #000;
-    }
-
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .scene {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 28px;
-    }
-
-    .title {
-      display: grid;
-      place-items: center;
-    }
-
-    .title > * {
-      grid-area: 1 / 1;
-    }
-
-    .prompt {
-      margin: 0;
-      color: #ff8a1f;
-      font-family: Impact, "Arial Black", sans-serif;
-      font-size: clamp(32px, 5vw, 64px);
-      letter-spacing: 0.03em;
-      text-align: center;
-    }
-
-    body.is-carving .prompt {
-      animation: flash 1.1s steps(1, end) infinite;
-    }
-
-    body.is-breaking .prompt {
-      animation: fade-out 0.35s linear forwards;
-    }
-
-    /* Above the vignette, so the closing edges never swallow it. */
-    .summon {
-      position: relative;
-      z-index: 31;
-      margin: 0;
-      color: #c40000;
-      font-family: Nosifer, Impact, sans-serif;
-      font-size: clamp(20px, min(7vw, 7vh), 58px);
-      font-weight: 400;
-      line-height: 1.25;
-      letter-spacing: 0.02em;
-      text-align: center;
-      text-shadow: 0 0 18px rgba(0, 0, 0, 0.95), 0 2px 0 #3a0000;
-      visibility: hidden;
-    }
-
-    body.is-breaking .summon {
-      visibility: visible;
-      animation: bleed 2.4s linear both;
-    }
-
-    body.is-flyer .summon {
-      visibility: hidden;
-    }
-
-    /* Runs down from the top like it is being written in blood. */
-    @keyframes bleed {
-      from {
-        clip-path: inset(-50% -50% 100% -50%);
-      }
-      to {
-        clip-path: inset(-50% -50% -50% -50%);
-      }
-    }
-
-    .pumpkin-stage {
-      position: relative;
-      width: min(62vmin, 520px);
-      aspect-ratio: 400 / 460;
-    }
-
-    .person-layer,
-    .pumpkin-stage > .pumpkin {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .person-layer {
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    .pumpkin-stage > .pumpkin {
-      z-index: 1;
-    }
-
-    .pumpkin-stage.is-broken > .pumpkin {
-      visibility: hidden;
-    }
-
-    .carve-piece {
-      opacity: 0;
-    }
-
-    body[data-carve="1"] [data-step="1"],
-    body[data-carve="2"] [data-step="1"],
-    body[data-carve="2"] [data-step="2"],
-    body[data-carve="3"] .carve-piece {
-      opacity: 1;
-    }
-
-    .crack,
-    .crack-glow {
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .crack {
-      stroke: #2a0b02;
-      stroke-width: 5;
-    }
-
-    .crack-glow {
-      stroke: #ffd36e;
-      stroke-width: 1.8;
-    }
-
-    .shard {
-      position: absolute;
-      z-index: 2;
       overflow: hidden;
-      pointer-events: none;
-      animation:
-        shatter 0.9s cubic-bezier(0.12, 0.75, 0.2, 1) forwards,
-        shard-fade 2s linear forwards;
     }
 
-    .shard .pumpkin {
-      max-width: none;
+    .yuma {
+      position: fixed;
+      inset: -100px;
+      z-index: 0;
+      width: calc(100% + 200px);
+      height: calc(100% + 200px);
+      object-fit: cover;
+      object-position: center;
     }
 
-    @keyframes flash {
-      50% {
-        opacity: 0;
-      }
+    body.is-yuma .yuma {
+      animation: impact 0.55s linear both;
     }
 
-    @keyframes fade-out {
-      to {
-        opacity: 0;
-      }
-    }
-
-    @keyframes shatter {
-      to {
-        transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
-      }
-    }
-
-    @keyframes shard-fade {
-      0%, 50% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-      }
-    }
-
-    /* Under the shards, so they fly off over the flyer on the drop. */
-    .flyer {
+    .poster-copy {
       position: fixed;
       inset: 0;
-      z-index: 1;
-      display: none;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .wordmark {
+      position: absolute;
+      left: 50%;
+      top: 4%;
+      width: min(94vw, 1280px);
+      overflow: visible;
+      opacity: 0;
+      translate: -50% -21%;
+    }
+
+    .wordmark text {
+      font-family: "Knewave", cursive;
+      font-size: 78px;
+      fill: #f3ead7;
+      letter-spacing: 0.08em;
+    }
+
+    .details {
+      position: absolute;
+      left: 50%;
+      bottom: 2.2%;
+      margin: 0;
+      color: rgba(246, 240, 228, 0.92);
+      font-family: "Oswald", sans-serif;
+      font-weight: 500;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      line-height: 1.35;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+      opacity: 0;
+      transform: translateX(-50%) scale(2, 1.5);
+    }
+
+    .details p {
+      margin: 0;
+    }
+
+    .details .place {
+      display: flex;
       align-items: center;
       justify-content: center;
-      background: #000;
-      overflow: hidden;
+      gap: 0.7em;
+      font-size: clamp(11px, 1.35vw, 18px);
     }
 
-    body.is-flyer .flyer {
-      display: flex;
+    .details .place::before,
+    .details .place::after {
+      content: "";
+      width: 1.5em;
+      height: 1px;
+      background: currentColor;
     }
 
-    .flyer-slot {
-      position: relative;
-      z-index: 1;
-      display: block;
-      width: auto;
-      height: auto;
-      max-width: min(86vw, 520px);
-      max-height: 92vh;
+    .details .when {
+      margin-top: 0.28em;
+      font-size: clamp(8px, 0.95vw, 12px);
+      letter-spacing: 0.16em;
     }
 
-    body.is-flyer .flyer-slot {
-      animation: slam 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    .details .time {
+      font-size: clamp(8px, 0.85vw, 11px);
     }
 
-    @keyframes slam {
-      from {
-        opacity: 0.2;
-        transform: scale(1.18);
-      }
-    }
-
-    /* Skulls drift up behind the flyer once it lands and bob on each kick. */
-    .skulls {
-      position: absolute;
+    .flashbang {
+      position: fixed;
       inset: 0;
+      z-index: 6;
+      background: #fff;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    body.is-flyer .flashbang {
+      animation: flashbang 0.2s linear both;
+    }
+
+    body.is-flyer .wordmark {
+      animation: letters-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+    }
+
+    body.is-flyer .details {
+      animation: details-pop 0.42s cubic-bezier(0.2, 1.35, 0.36, 1) both;
+    }
+
+    @keyframes flashbang {
+      0%, 8% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes letters-in {
+      0% { opacity: 0; transform: scale(1.42); }
+      28% { opacity: 1; transform: scale(1.16); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes details-pop {
+      from { opacity: 0; transform: translateX(-50%) scale(1.64, 1.23); }
+      to { opacity: 1; transform: translateX(-50%) scale(2, 1.5); }
+    }
+
+    .strobe {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: #fff;
+      transition: opacity 0.18s linear;
+    }
+
+    .sweep {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 4;
+      width: 46vw;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 22%, #fff 46%, #fff 54%, rgba(255, 255, 255, 0.2) 78%, transparent 100%);
+      mix-blend-mode: screen;
+    }
+
+    .sweep.is-across {
+      animation: sweep-across 0.32s linear both;
+    }
+
+    .sweep.is-from-right {
+      animation: sweep-from-right 0.32s linear both;
+    }
+
+    @keyframes sweep-across {
+      0% { opacity: 1; transform: translate3d(-54vw, 0, 0); }
+      82% { opacity: 1; transform: translate3d(78vw, 0, 0); }
+      100% { opacity: 0; transform: translate3d(108vw, 0, 0); }
+    }
+
+    @keyframes sweep-from-right {
+      0% { opacity: 1; transform: translate3d(108vw, 0, 0); }
+      82% { opacity: 1; transform: translate3d(-24vw, 0, 0); }
+      100% { opacity: 0; transform: translate3d(-54vw, 0, 0); }
+    }
+
+    /* Oversized so the shake never flashes the page edge. */
+    .world {
+      position: fixed;
+      inset: -48px;
+      z-index: 1;
+      background: #000;
+      transition: opacity 0.06s linear;
+    }
+
+    body.is-yuma .world {
       opacity: 0;
       pointer-events: none;
-      transition: opacity 1.2s ease-out;
     }
 
-    body.is-haunted .skulls {
-      opacity: 1;
+    .world.is-shaking {
+      --amp: calc(8px + (var(--hit) - 1) * 5px);
+      animation: shake 0.26s linear both;
     }
 
-    .skull {
+    @keyframes impact {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+      6% { transform: translate3d(-58px, 22px, 0) rotate(-2.6deg); }
+      14% { transform: translate3d(54px, -20px, 0) rotate(2.4deg); }
+      24% { transform: translate3d(-44px, 16px, 0) rotate(-1.9deg); }
+      36% { transform: translate3d(32px, -12px, 0) rotate(1.3deg); }
+      50% { transform: translate3d(-18px, 7px, 0) rotate(-0.7deg); }
+      66% { transform: translate3d(9px, -3px, 0) rotate(0.28deg); }
+      82% { transform: translate3d(-3px, 1px, 0) rotate(0deg); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+      8% { transform: translate3d(calc(var(--amp) * -1), calc(var(--amp) * 0.28), 0) rotate(-0.55deg); }
+      18% { transform: translate3d(calc(var(--amp) * 0.92), calc(var(--amp) * -0.22), 0) rotate(0.5deg); }
+      30% { transform: translate3d(calc(var(--amp) * -0.74), calc(var(--amp) * 0.26), 0) rotate(-0.4deg); }
+      44% { transform: translate3d(calc(var(--amp) * 0.56), calc(var(--amp) * -0.14), 0) rotate(0.3deg); }
+      58% { transform: translate3d(calc(var(--amp) * -0.36), calc(var(--amp) * 0.1), 0) rotate(-0.18deg); }
+      74% { transform: translate3d(calc(var(--amp) * 0.16), calc(var(--amp) * -0.05), 0) rotate(0.08deg); }
+      88% { transform: translate3d(calc(var(--amp) * -0.06), 0, 0) rotate(0deg); }
+    }
+
+    .hanger {
       position: absolute;
-      bottom: -12vh;
-      left: var(--x);
-      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-      font-size: var(--size);
-      line-height: 1;
-      opacity: var(--alpha);
-      scale: calc(1 + 0.15 * var(--pulse, 0));
-      animation:
-        skull-rise var(--rise) linear var(--delay) infinite,
-        skull-sway var(--sway) ease-in-out var(--delay) infinite alternate;
+      inset: 0;
+      pointer-events: none;
+      transition: opacity 0.2s linear, visibility 0s linear 0.2s;
     }
 
-    @keyframes skull-rise {
-      to {
-        translate: 0 -125vh;
-      }
+    .hanger.is-gone {
+      opacity: 0;
+      visibility: hidden;
     }
 
-    @keyframes skull-sway {
-      from {
-        rotate: -18deg;
-        transform: translateX(-3vw);
-      }
-      to {
-        rotate: 18deg;
-        transform: translateX(3vw);
-      }
+    /* Starts above the screen so the shake never unhooks it from the ceiling. */
+    .string {
+      position: absolute;
+      left: 50%;
+      top: -64px;
+      width: 2px;
+      height: 0;
+      translate: -50% 0;
+      border-radius: 1px;
+      background: linear-gradient(#7a7a7a, #f4f4f4 45%, #bdbdbd);
+    }
+
+    .ball {
+      --size: min(46vw, 30vh, 250px);
+      position: absolute;
+      left: 50%;
+      top: -46%;
+      width: var(--size);
+      aspect-ratio: 1;
+      padding: 0;
+      border: 0;
+      background: none;
+      translate: -50% 0;
+      cursor: pointer;
+      pointer-events: auto;
+      touch-action: manipulation;
+      outline: none;
+    }
+
+    .hanger.is-live .string,
+    .hanger.is-live .ball {
+      transition:
+        height var(--drop, 1.56s) var(--ease, cubic-bezier(0.22, 1.16, 0.32, 1)),
+        top var(--drop, 1.56s) var(--ease, cubic-bezier(0.22, 1.16, 0.32, 1));
+    }
+
+    .ball svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .skull {
-        bottom: var(--y);
+      .hanger,
+      .hanger.is-live .string,
+      .hanger.is-live .ball {
+        transition-duration: 0.01s;
+      }
+
+      .world.is-shaking,
+      body.is-yuma .yuma {
         animation: none;
       }
-    }
 
-    .vignette {
-      position: fixed;
-      inset: 0;
-      z-index: 30;
-      overflow: hidden;
-      pointer-events: none;
-    }
+      .world {
+        transition-duration: 0.01s;
+      }
 
-    .vignette > div {
-      position: absolute;
-      inset: 0;
-      will-change: opacity, transform;
-    }
+      .strobe {
+        transition: none;
+      }
 
-    .vignette-shade {
-      background: radial-gradient(ellipse closest-side, rgba(0, 0, 0, 0) 55%, rgba(26, 4, 40, 0.7) 85%, rgba(8, 0, 14, 0.96) 100%);
-    }
+      .flashbang,
+      .sweep,
+      .wordmark,
+      .details,
+      body.is-flyer .flashbang,
+      body.is-flyer .wordmark,
+      body.is-flyer .details {
+        animation: none;
+      }
 
-    .vignette-glow {
-      background: radial-gradient(ellipse closest-side, rgba(255, 110, 0, 0) 58%, rgba(255, 110, 0, 0.45) 82%, rgba(190, 20, 0, 0.9) 100%);
-    }
+      body.is-flyer .wordmark {
+        opacity: 1;
+        transform: none;
+      }
 
-    .vignette-flash {
-      opacity: 0;
-      background: radial-gradient(ellipse closest-side, rgba(255, 190, 90, 0.15) 0%, rgba(255, 120, 20, 0.55) 65%, rgba(255, 70, 0, 0.95) 100%);
+      body.is-flyer .details {
+        opacity: 1;
+        transform: translateX(-50%) scale(2, 1.5);
+      }
     }
   </style>
 </head>
 <body>
-  <div class="scene">
-    <div class="title">
-      <p class="prompt">Click to carve the pumpkin</p>
-      <h1 class="summon">YOU HAVE BEEN<br>SUMMONED</h1>
+  <img class="yuma" src="./yuma.png" alt="Yuma stage">
+  <div class="poster-copy">
+    <svg class="wordmark" viewBox="0 0 1400 360" role="img" aria-label="Betachella" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <defs>
+        <path id="betachella-arc" d="M 20 320 Q 700 70 1380 320"/>
+        <filter id="letter-glow" x="-20%" y="-80%" width="140%" height="260%" color-interpolation-filters="sRGB">
+          <feGaussianBlur stdDeviation="16" result="wide"/>
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="tight"/>
+          <feComponentTransfer in="wide" result="halo">
+            <feFuncA type="linear" slope="1.15"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="halo"/>
+            <feMergeNode in="tight"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <text filter="url(#letter-glow)">
+        <textPath href="#betachella-arc" xlink:href="#betachella-arc" startOffset="40" textLength="1310" lengthAdjust="spacing">BETACHELLA</textPath>
+      </text>
+    </svg>
+    <div class="details">
+      <p class="place">House 22</p>
+      <p class="when">Saturday November 14<sup>th</sup></p>
+      <p class="time">9:30 PM</p>
     </div>
-    <div class="pumpkin-stage">
-      <svg class="person-layer" viewBox="0 0 400 460" aria-hidden="true">
+  </div>
+  <div class="strobe" aria-hidden="true"></div>
+  <div class="sweep" aria-hidden="true"></div>
+  <div class="flashbang" aria-hidden="true"></div>
+  <audio class="track" preload="auto"></audio>
+  <div class="world">
+    <div class="hanger">
+      <div class="string" aria-hidden="true"></div>
+    <button class="ball" type="button" aria-label="Disco ball">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
         <defs>
-          <clipPath id="person-clip" clipPathUnits="userSpaceOnUse">
-            <ellipse cx="78" cy="258" rx="52" ry="112"/>
-            <ellipse cx="322" cy="258" rx="52" ry="112"/>
-            <ellipse cx="124" cy="248" rx="78" ry="142"/>
-            <ellipse cx="276" cy="248" rx="78" ry="142"/>
-            <ellipse cx="200" cy="252" rx="104" ry="162"/>
+          <clipPath id="ball-clip">
+            <circle cx="100" cy="108" r="84"/>
           </clipPath>
-        </defs>
-        <image
-          href="./person_cutout.svg"
-          x="-746.4"
-          y="-213"
-          width="1874.6"
-          height="1586.2"
-          preserveAspectRatio="none"
-          clip-path="url(#person-clip)"
-        />
-      </svg>
-      <svg class="pumpkin" viewBox="0 0 400 460" role="img" aria-label="Pumpkin">
-        <defs>
-          <radialGradient id="pumpkin-body" cx="38%" cy="30%" r="72%">
-            <stop offset="0%" stop-color="#ffc56a"/>
-            <stop offset="32%" stop-color="#ff8a1f"/>
-            <stop offset="72%" stop-color="#e25808"/>
-            <stop offset="100%" stop-color="#9a3206"/>
+          <radialGradient id="ball-light" cx="32%" cy="28%" r="70%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.88"/>
+            <stop offset="16%" stop-color="#fff" stop-opacity="0.22"/>
+            <stop offset="48%" stop-color="#000" stop-opacity="0"/>
+            <stop offset="100%" stop-color="#000" stop-opacity="0.62"/>
           </radialGradient>
-          <linearGradient id="stem" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#8fce55"/>
-            <stop offset="100%" stop-color="#2d6424"/>
-          </linearGradient>
-          <clipPath id="pumpkin-shape">
-            <ellipse cx="78" cy="258" rx="52" ry="112"/>
-            <ellipse cx="322" cy="258" rx="52" ry="112"/>
-            <ellipse cx="124" cy="248" rx="78" ry="142"/>
-            <ellipse cx="276" cy="248" rx="78" ry="142"/>
-            <ellipse cx="200" cy="252" rx="104" ry="162"/>
-          </clipPath>
-          <mask id="pumpkin-holes" maskUnits="userSpaceOnUse">
-            <rect x="0" y="0" width="400" height="460" fill="#fff"/>
-            <!-- His left eye, his right eye, then the mouth, cut to the feature. -->
-            <ellipse class="carve-piece" data-step="1" cx="286" cy="180" rx="36" ry="18" fill="#000" transform="rotate(-6 286 180)"/>
-            <ellipse class="carve-piece" data-step="2" cx="112" cy="218" rx="36" ry="18" fill="#000" transform="rotate(-20 112 218)"/>
-            <path
-              class="carve-piece"
-              data-step="3"
-              fill="#000"
-              transform="translate(-12 0) rotate(-2 245 319)"
-              d="M164,332 C196,304 228,290 252,298 C278,290 306,296 326,308 C308,324 276,340 250,338 C220,348 190,344 164,332 Z"
-            />
-          </mask>
         </defs>
-
-        <g fill="url(#pumpkin-body)" mask="url(#pumpkin-holes)">
-          <ellipse cx="78" cy="258" rx="52" ry="112"/>
-          <ellipse cx="322" cy="258" rx="52" ry="112"/>
-          <ellipse cx="124" cy="248" rx="78" ry="142"/>
-          <ellipse cx="276" cy="248" rx="78" ry="142"/>
-          <ellipse cx="200" cy="252" rx="104" ry="162"/>
-        </g>
-
-        <g fill="none" stroke="#8a2e06" stroke-linecap="round" opacity="0.38" clip-path="url(#pumpkin-shape)" mask="url(#pumpkin-holes)">
-          <path d="M150 104 C132 186 134 318 158 408" stroke-width="11"/>
-          <path d="M250 104 C268 186 266 318 242 408" stroke-width="11"/>
-          <path d="M200 96 C186 190 186 326 200 418" stroke-width="8"/>
-        </g>
-
-        <!-- Cracks open outward from the carved holes as the drop nears. data-at is when each starts. -->
-        <g class="cracks" clip-path="url(#pumpkin-shape)" mask="url(#pumpkin-holes)">
-          <path class="crack" data-at="0" d="M196 118 L188 140 L198 158 L182 182 L190 200 L174 224"/>
-          <path class="crack" data-at="0.08" d="M290 197 L298 218 L286 236 L296 258 L288 280"/>
-          <path class="crack" data-at="0.14" d="M152 332 L130 338 L122 358 L98 366 L84 384"/>
-          <path class="crack" data-at="0.2" d="M320 176 L338 168 L344 186 L362 192 L368 208"/>
-          <path class="crack" data-at="0.26" d="M204 206 L216 228 L204 248 L218 270 L210 292"/>
-          <path class="crack" data-at="0.32" d="M120 203 L128 180 L118 162 L132 138 L124 118"/>
-          <path class="crack" data-at="0.38" d="M232 341 L226 362 L240 378 L230 402 L236 414"/>
-          <path class="crack" data-at="0.44" d="M80 230 L62 238 L68 258 L46 272 L40 292"/>
-          <path class="crack" data-at="0.5" d="M316 310 L334 322 L328 344 L348 358 L346 378"/>
-          <path class="crack" data-at="0.56" d="M214 120 L232 132 L242 120 L262 140 L272 162"/>
-          <path class="crack" data-at="0.62" d="M198 158 L216 166 L224 184"/>
-          <path class="crack" data-at="0.66" d="M298 218 L318 226 L326 246"/>
-          <path class="crack" data-at="0.7" d="M68 258 L86 272 L82 292"/>
-          <path class="crack" data-at="0.74" d="M226 362 L206 372 L198 392"/>
-          <path class="crack" data-at="0.78" d="M334 322 L354 314"/>
-          <path class="crack" data-at="0.82" d="M128 180 L104 172 L92 186"/>
-        </g>
-        <g class="crack-glows" clip-path="url(#pumpkin-shape)" mask="url(#pumpkin-holes)"></g>
-
-        <path
-          d="M186 112 C180 68 210 34 252 24 C228 46 210 74 208 114 C200 124 190 122 186 112 Z"
-          fill="url(#stem)"
-        />
-        <path
-          d="M214 78 C236 70 258 86 268 108"
-          fill="none"
-          stroke="#3f7a2c"
-          stroke-width="7"
-          stroke-linecap="round"
-        />
+        <g id="facets" clip-path="url(#ball-clip)"></g>
+        <circle cx="100" cy="108" r="84" fill="url(#ball-light)"/>
+        <circle cx="100" cy="108" r="83.4" fill="none" stroke="#4e565e" stroke-width="1.1"/>
       </svg>
+    </button>
     </div>
   </div>
-  <div class="flyer">
-    <div class="skulls" aria-hidden="true"></div>
-    <img class="flyer-slot" src="./FLYER_NEW.png" alt="BΘΠ Halloween, House 22, Saturday Oct 31, 9:30PM">
-  </div>
-  <div class="vignette" aria-hidden="true">
-    <div class="vignette-shade"></div>
-    <div class="vignette-glow"></div>
-    <div class="vignette-flash"></div>
-  </div>
-
   <script>
-    const KNIFE_URL = encodeURI("./Knife Sound Effect ( HD ) No Copyright.mp3");
-    const SONG_URL = encodeURI("./Odd Mob, OMNOM, HYPERBEAM - Take You There (Extended Mix).mp3");
-    const KNIFE_CUT_SECONDS = 0.4;
-    const SONG_START_SECONDS = 80;
-    // First kick of the drop, measured from the track. The beat grid is anchored here.
-    const DROP_SECONDS = 90.23;
-    const BEAT_SECONDS = 60 / 128;
-    const SONG_WAIT_MS = 5000;
-    const CRACK_GROW = 0.14;
-    const HEARTBEAT_SECONDS = 1.3;
-    const HEARTBEAT_RACE = 0.12;
-    const CARVE_LEVEL = 0.12;
-    const BREAK_LEVEL = 0.3;
-    const FLYER_LEVEL = 0.35;
-    const SONG_START_VOLUME = 0.02;
-    const SONG_FADE_SECONDS = 10;
-    const CARVE_STEPS = 3;
-    const SHARD_COLUMNS = 4;
-    const SHARD_ROWS = 5;
-    const SKULL_COUNT = 18;
+    const CLICKS = 3;
+    const RESTS = ["8%", "27%", "46%", "65%"];
+    const DROP_ANIM_MS = 1560;
+    // Opening drop only. The clicked drops last exactly one beat and land on the shake.
+    const LAND_MS = DROP_ANIM_MS * 0.75;
+    const SHAKE_MS = 350;
+    const START_VOLUME = 0;
+    const SONG_START_SECONDS = 0;
+    const FLYER_MS = 8000;
+    const BPM = 72;
+    const BEAT_S = 60 / BPM;
+    // One empty beat, then drop, shake, drop, shake, drop, shake, then the photo.
+    const REVEAL_BEAT = 7;
 
-    let audioContext = null;
-    let songGain = null;
-    let knifeBytes = null;
-    let knifeBuffer = null;
-    let songBytes = null;
-    let songBuffer = null;
-    let songAudio = null;
-    let songSourceStartedAt = null;
-    let songStarted = false;
-    let songDecodeFailed = false;
-    let decodingSong = false;
-    let cueTimer = 0;
-    let revealReady = false;
-    let carveStep = 0;
-    let breaking = false;
-    let breakStartedAt = 0;
-    let broken = false;
-    let songClockTime = 0;
-    let elementTime = 0;
-    let elementTimeAt = 0;
-
-    /**
-     * Drops the leading ID3 tag. This file hides the audio behind about 3MB of
-     * tag data, which makes Safari refuse to decode it and report that it cannot seek.
-     */
-    function stripId3(buffer) {
-      const bytes = new Uint8Array(buffer);
-      const isId3 = bytes.length >= 10 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33;
-      if (!isId3) {
-        return buffer;
-      }
-
-      const size = ((bytes[6] & 0x7f) << 21)
-        | ((bytes[7] & 0x7f) << 14)
-        | ((bytes[8] & 0x7f) << 7)
-        | (bytes[9] & 0x7f);
-      const footer = (bytes[5] & 0x10) ? 10 : 0;
-      const start = Math.min(buffer.byteLength, 10 + size + footer);
-      return buffer.slice(start);
-    }
-
-    /** Decodes a copy of the bytes. Safari consumes the buffer it is given. */
-    function decodeAudio(bytes) {
-      const copy = bytes.slice(0);
-      return new Promise((resolve, reject) => {
-        let settled = false;
-        const finish = (buffer) => {
-          if (settled || !buffer) {
-            return;
-          }
-          settled = true;
-          resolve(buffer);
-        };
-        const fail = (error) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          reject(error || new Error("decode"));
-        };
-
-        try {
-          const result = audioContext.decodeAudioData(copy);
-          if (result && typeof result.then === "function") {
-            result.then(finish).catch(fail);
-            return;
-          }
-        } catch (error) {
-          // Older Safari requires the callback form and consumes the first copy.
-        }
-
-        audioContext.decodeAudioData(bytes.slice(0), finish, fail);
-      });
-    }
-
-    /** Fills the space around the flyer with skulls, already spread up the screen. */
-    function summonSkulls() {
-      const field = document.querySelector(".skulls");
-      for (let i = 0; i < SKULL_COUNT; i += 1) {
-        const skull = document.createElement("span");
-        skull.className = "skull";
-        skull.textContent = "💀";
-        const rise = 9 + Math.random() * 8;
-        skull.style.setProperty("--x", `${(((i + Math.random()) / SKULL_COUNT) * 100).toFixed(1)}%`);
-        skull.style.setProperty("--y", `${(Math.random() * 90).toFixed(1)}%`);
-        skull.style.setProperty("--size", `${(4 + Math.random() * 6).toFixed(1)}vmin`);
-        skull.style.setProperty("--alpha", (0.35 + Math.random() * 0.45).toFixed(2));
-        skull.style.setProperty("--rise", `${rise.toFixed(1)}s`);
-        skull.style.setProperty("--sway", `${(1.8 + Math.random() * 1.6).toFixed(1)}s`);
-        skull.style.setProperty("--delay", `${(-Math.random() * rise).toFixed(1)}s`);
-        field.appendChild(skull);
-      }
-      document.body.classList.add("is-haunted");
-    }
-
-    /** Slams the party flyer in behind the flying shards, then brings the skulls. */
-    function showFlyer() {
-      document.querySelector(".flyer-slot").addEventListener("animationend", summonSkulls, { once: true });
-      document.body.classList.add("is-flyer");
-    }
-
-    /** Starts the song element at 1:20 and rises linearly to full volume at the drop. */
-    function startSongElement() {
-      if (songStarted || !songAudio || !songAudio.src) {
-        return;
-      }
-
-      songStarted = true;
-      let began = false;
-      const begin = () => {
-        if (began) {
-          return;
-        }
-        began = true;
-        songAudio.volume = SONG_START_VOLUME;
-        const pending = songAudio.play();
-        if (pending && typeof pending.catch === "function") {
-          pending.catch(() => {
-            songStarted = false;
-            began = false;
-          });
-        }
-        const started = performance.now();
-        const fade = () => {
-          const elapsed = (performance.now() - started) / 1000;
-          songAudio.volume = Math.min(1, SONG_START_VOLUME + (1 - SONG_START_VOLUME) * (elapsed / SONG_FADE_SECONDS));
-          if (elapsed < SONG_FADE_SECONDS) {
-            requestAnimationFrame(fade);
-          }
-        };
-        requestAnimationFrame(fade);
-      };
-      const seek = () => {
-        if (Math.abs(songAudio.currentTime - SONG_START_SECONDS) < 0.5) {
-          begin();
-          return;
-        }
-        const backup = window.setTimeout(begin, 800);
-        songAudio.addEventListener("seeked", () => {
-          window.clearTimeout(backup);
-          begin();
-        }, { once: true });
-        songAudio.currentTime = SONG_START_SECONDS;
-      };
-
-      if (songAudio.readyState >= 1) {
-        seek();
-      } else {
-        songAudio.addEventListener("loadedmetadata", seek, { once: true });
-      }
-    }
-
-    /** Plays the decoded song through the audio context at 1:20. */
-    function startSongBuffer() {
-      if (songStarted || !songBuffer || !audioContext) {
-        return;
-      }
-
-      songStarted = true;
-      const start = () => {
-        const source = audioContext.createBufferSource();
-        source.buffer = songBuffer;
-        source.connect(songGain);
-        const now = audioContext.currentTime;
-        songGain.gain.cancelScheduledValues(now);
-        songGain.gain.setValueAtTime(SONG_START_VOLUME, now);
-        songGain.gain.linearRampToValueAtTime(1, now + SONG_FADE_SECONDS);
-        source.start(now, SONG_START_SECONDS);
-        songSourceStartedAt = now;
-      };
-      const resumed = audioContext.resume();
-      if (resumed && typeof resumed.then === "function") {
-        resumed.then(start).catch(start);
-      } else {
-        start();
-      }
-    }
-
-    /** Decodes audio that has already been fetched, once Safari has unlocked the context. */
-    function decodeLoadedAudio() {
-      if (!audioContext || audioContext.state === "suspended") {
-        return;
-      }
-
-      if (knifeBytes && !knifeBuffer) {
-        const bytes = knifeBytes;
-        knifeBytes = null;
-        decodeAudio(bytes).then((buffer) => {
-          knifeBuffer = buffer;
-        }).catch(() => {});
-      }
-
-      if (!songBytes || songBuffer || decodingSong) {
-        return;
-      }
-
-      decodingSong = true;
-      decodeAudio(songBytes).then((buffer) => {
-        songBuffer = buffer;
-        cueMusic();
-      }).catch(() => {
-        songDecodeFailed = true;
-        decodingSong = false;
-        cueMusic();
-      });
-    }
-
-    /**
-     * Creates the audio context from the click. Safari stays silent if the
-     * context is created or resumed outside a user gesture.
-     */
-    function ensureContext() {
-      if (!audioContext) {
-        const Context = window.AudioContext || window.webkitAudioContext;
-        audioContext = new Context();
-        songGain = audioContext.createGain();
-        songGain.connect(audioContext.destination);
-        const silent = audioContext.createBuffer(1, 1, 22050);
-        const blip = audioContext.createBufferSource();
-        blip.buffer = silent;
-        blip.connect(audioContext.destination);
-        blip.start(0);
-      }
-
-      const resumed = audioContext.resume();
-      if (resumed && typeof resumed.then === "function") {
-        resumed.then(decodeLoadedAudio);
-      }
-      decodeLoadedAudio();
-    }
-
-    /** Unlocks the audio context on a click without starting the song. */
-    function unlockAudio() {
-      ensureContext();
-    }
-
-    fetch(KNIFE_URL)
-      .then((response) => response.arrayBuffer())
-      .then((audioData) => {
-        knifeBytes = audioData;
-        decodeLoadedAudio();
-      })
-      .catch(() => {});
-
-    fetch(SONG_URL)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("song");
-        }
-        return response.arrayBuffer();
-      })
-      .then((audioData) => {
-        songBytes = stripId3(audioData);
-        songAudio = songAudio || new Audio();
-        songAudio.preload = "auto";
-        if (!songStarted) {
-          songAudio.src = URL.createObjectURL(new Blob([songBytes], { type: "audio/mpeg" }));
-        }
-        decodeLoadedAudio();
-        cueMusic();
-      })
-      .catch(() => {
-        songDecodeFailed = true;
-        songAudio = songAudio || new Audio(SONG_URL);
-        songAudio.preload = "auto";
-        cueMusic();
-      });
-
-    /** Starts the song at 1:20 once the pumpkin starts breaking. */
-    function cueMusic() {
-      if (songStarted || !revealReady) {
-        return;
-      }
-
-      if (songBuffer && audioContext) {
-        window.clearTimeout(cueTimer);
-        cueTimer = 0;
-        startSongBuffer();
-        return;
-      }
-
-      if (songDecodeFailed) {
-        window.clearTimeout(cueTimer);
-        cueTimer = 0;
-        startSongElement();
-        return;
-      }
-
-      if (!cueTimer) {
-        cueTimer = window.setTimeout(() => {
-          cueTimer = 0;
-          if (songStarted || !revealReady) {
-            return;
-          }
-          if (songBuffer && audioContext) {
-            startSongBuffer();
-          } else {
-            startSongElement();
-          }
-        }, 2000);
-      }
-    }
-
-    /** Plays the first 0.4 seconds of the knife cut. */
-    function playKnifeCut() {
-      if (!knifeBuffer || !audioContext) {
-        const cut = new Audio(KNIFE_URL);
-        const pending = cut.play();
-        if (pending && typeof pending.catch === "function") {
-          pending.catch(() => {});
-        }
-        window.setTimeout(() => cut.pause(), KNIFE_CUT_SECONDS * 1000);
-        return;
-      }
-
-      audioContext.resume();
-      const source = audioContext.createBufferSource();
-      source.buffer = knifeBuffer;
-      source.connect(audioContext.destination);
-      source.start(0, 0, KNIFE_CUT_SECONDS);
-    }
-
-    /**
-     * Copies the pumpkin with its own gradient and mask.
-     * Pieces that borrow the hidden pumpkin's paint stay blank in Safari.
-     */
-    function clonePumpkinPiece(svg, index) {
-      const clone = svg.cloneNode(true);
-      const suffix = `-piece-${index}`;
-      clone.querySelectorAll("[id]").forEach((node) => {
-        node.setAttribute("id", `${node.getAttribute("id")}${suffix}`);
-      });
-      clone.querySelectorAll("*").forEach((node) => {
-        ["fill", "stroke", "mask", "clip-path"].forEach((name) => {
-          const value = node.getAttribute(name);
-          if (!value || value.indexOf("url(#") === -1) {
-            return;
-          }
-          node.setAttribute(name, value.replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${id}${suffix})`));
-        });
-      });
-      return clone;
-    }
-
-    /** Cuts the cracked pumpkin into pieces on the drop. */
-    function shatterPumpkin() {
-      if (broken) {
-        return;
-      }
-
-      broken = true;
-      const stage = document.querySelector(".pumpkin-stage");
-      const svg = stage.querySelector(".pumpkin");
-      stage.style.transform = "";
-      const reach = stage.getBoundingClientRect().width;
-      stage.classList.add("is-broken");
-      if (audioContext) {
-        audioContext.resume();
-      }
-      let piece = 0;
-      for (let row = 0; row < SHARD_ROWS; row += 1) {
-        for (let column = 0; column < SHARD_COLUMNS; column += 1) {
-          const shard = document.createElement("div");
-          shard.className = "shard";
-          shard.style.left = `${(column / SHARD_COLUMNS) * 100}%`;
-          shard.style.top = `${(row / SHARD_ROWS) * 100}%`;
-          shard.style.width = `${100 / SHARD_COLUMNS}%`;
-          shard.style.height = `${100 / SHARD_ROWS}%`;
-
-          const clone = clonePumpkinPiece(svg, piece);
-          piece += 1;
-          clone.style.position = "absolute";
-          clone.style.width = `${SHARD_COLUMNS * 100}%`;
-          clone.style.height = `${SHARD_ROWS * 100}%`;
-          clone.style.left = `${-column * 100}%`;
-          clone.style.top = `${-row * 100}%`;
-          shard.appendChild(clone);
-
-          const centerX = (column + 0.5) / SHARD_COLUMNS - 0.5;
-          const centerY = (row + 0.5) / SHARD_ROWS - 0.5;
-          let dx = centerX * reach * 1.85;
-          let dy = centerY * reach * 1.55;
-          if (Math.hypot(centerX, centerY) < 0.18) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = reach * (0.42 + Math.random() * 0.28);
-            dx = Math.cos(angle) * distance;
-            dy = Math.sin(angle) * distance;
-          }
-
-          shard.style.setProperty("--dx", `${(dx + (Math.random() - 0.5) * reach * 0.22).toFixed(1)}px`);
-          shard.style.setProperty("--dy", `${(dy + (Math.random() - 0.5) * reach * 0.18).toFixed(1)}px`);
-          shard.style.setProperty("--rot", `${Math.round((Math.random() - 0.5) * 520)}deg`);
-          stage.appendChild(shard);
-        }
-      }
-
-      showFlyer();
-    }
-
-    /** Starts the song and lets the pumpkin crack until the drop breaks it. */
-    function startBreaking() {
-      breaking = true;
-      breakStartedAt = performance.now();
-      document.body.classList.add("is-breaking");
-      revealReady = true;
-      cueMusic();
-    }
-
-    /** Advances the face, then starts breaking the pumpkin on the click after the mouth. */
-    function carve() {
-      if (breaking) {
-        return;
-      }
-
-      if (carveStep >= CARVE_STEPS) {
-        playKnifeCut();
-        startBreaking();
-        return;
-      }
-
-      carveStep += 1;
-      document.body.dataset.carve = String(carveStep);
-      document.body.classList.add("is-carving");
-      playKnifeCut();
-    }
-
-    /** Where the song is now, or null until it is audibly playing. */
-    function songPosition(now) {
-      if (songSourceStartedAt !== null) {
-        const latency = audioContext.outputLatency || audioContext.baseLatency || 0;
-        return SONG_START_SECONDS + audioContext.currentTime - songSourceStartedAt - latency;
-      }
-
-      if (!songStarted || !songAudio || songAudio.paused || songAudio.currentTime < SONG_START_SECONDS - 1) {
-        return null;
-      }
-
-      // The element's clock ticks coarsely in some browsers, so fill the gaps.
-      if (songAudio.currentTime !== elementTime) {
-        elementTime = songAudio.currentTime;
-        elementTimeAt = now;
-      }
-      return elementTime + Math.min(now - elementTimeAt, 250) / 1000;
-    }
-
-    /**
-     * Song time that drives the break. If the song never starts, a stand-in
-     * clock runs from 1:20 so the pumpkin still breaks. It never runs backwards.
-     */
-    function songClock(now) {
-      let position = songPosition(now);
-      if (position === null && now - breakStartedAt > SONG_WAIT_MS) {
-        position = SONG_START_SECONDS + (now - breakStartedAt - SONG_WAIT_MS) / 1000;
-      }
-      if (position === null) {
-        return null;
-      }
-
-      songClockTime = Math.max(songClockTime, position);
-      return songClockTime;
-    }
-
-    /** Two thumps per heartbeat, each falling off quickly. */
-    function heartbeat(phase) {
-      const seconds = (phase % 1) * HEARTBEAT_SECONDS;
-      const lub = Math.exp(-seconds / 0.1);
-      const dub = seconds > 0.26 ? 0.65 * Math.exp(-(seconds - 0.26) / 0.1) : 0;
-      return Math.max(lub, dub);
-    }
-
-    const vignetteShade = document.querySelector(".vignette-shade");
-    const vignetteGlow = document.querySelector(".vignette-glow");
-    const vignetteFlash = document.querySelector(".vignette-flash");
-    const pumpkinStage = document.querySelector(".pumpkin-stage");
-    const summon = document.querySelector(".summon");
-    const skullField = document.querySelector(".skulls");
-    const crackGlows = document.querySelector(".pumpkin .crack-glows");
+    const world = document.querySelector(".world");
+    const hanger = document.querySelector(".hanger");
+    const string = document.querySelector(".string");
+    const ball = document.querySelector(".ball");
+    const track = document.querySelector(".track");
+    const SONG_FILE = "./Interplanetary%20Criminal,%20Kettama%20-%20Yosemite%20.mp3";
+    track.src = SONG_FILE;
+    const strobe = document.querySelector(".strobe");
+    const sweep = document.querySelector(".sweep");
+    const CAP = "calc(min(46vw, 30vh, 250px) * 0.145)";
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Volume reaches full as the photo hits, six beats after the click.
+    const REVEAL_MS = (reduceMotion ? 0.04 : BEAT_S * REVEAL_BEAT) * 1000;
 
-    /** Each crack is drawn twice: a dark split with a thin glow inside it. */
-    const cracks = Array.from(document.querySelectorAll(".pumpkin .crack")).map((crack) => {
-      const glow = crack.cloneNode();
-      glow.setAttribute("class", "crack-glow");
-      crackGlows.appendChild(glow);
-      const length = crack.getTotalLength();
-      const paths = [crack, glow];
-      paths.forEach((path) => {
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length);
-      });
-      return { start: Number(crack.getAttribute("data-at")), length, paths };
-    });
-    let crackedTo = 0;
+    let clicks = 0;
+    let moveId = 0;
+    let landedId = 0;
+    let opened = false;
+    let ready = false;
+    let busy = false;
+    let playing = false;
+    let songStarted = false;
+    let revealed = false;
+    let lastBeat = -1;
+    let firstFlashBeat = Infinity;
+    let flyerSongTime = Infinity;
+    let cueUrl = "";
 
-    /** Darker edges always; the orange glow swells with level and kicks with each pulse. */
-    function paintVignette(level, pulse, flash) {
-      vignetteShade.style.opacity = (0.35 + 0.55 * level).toFixed(3);
-      vignetteShade.style.transform = `scale(${(1.25 - 0.2 * level - 0.05 * pulse * level).toFixed(3)})`;
-      vignetteGlow.style.opacity = ((0.08 + 0.92 * level) * (0.3 + 0.7 * pulse)).toFixed(3);
-      vignetteGlow.style.transform = `scale(${(1.4 - 0.28 * level - 0.12 * pulse * level).toFixed(3)})`;
-      vignetteFlash.style.opacity = flash.toFixed(3);
+    /** Paints the mirrored tiles, brighter toward the upper-left light. */
+    function paintFacets() {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const group = document.getElementById("facets");
+      const cx = 100;
+      const cy = 108;
+      const radius = 84;
+      const rows = 18;
+      const gap = 0.55;
+      const sparks = ["#f6c6dc", "#c6ecff", "#ffe3a6", "#ddd0ff"];
+
+      for (let row = 0; row < rows; row += 1) {
+        const y0 = cy - radius + (row * (radius * 2)) / rows;
+        const y1 = y0 + (radius * 2) / rows;
+        const midY = (y0 + y1) / 2;
+        const half = Math.sqrt(Math.max(0, radius * radius - (midY - cy) ** 2));
+        // Drawn past the rim so the circular clip, not the tile grid, is the edge.
+        const reach = half + 2.4;
+        const tile = (radius * 2) / rows;
+        const cols = Math.max(1, Math.round((reach * 2) / tile));
+        const tileW = (reach * 2) / cols;
+
+        for (let col = 0; col < cols; col += 1) {
+          const x = cx - reach + col * tileW;
+          const across = cols === 1 ? 0.5 : col / (cols - 1);
+          const down = row / (rows - 1);
+          const light = 1 - Math.min(1, Math.hypot(across - 0.32, down - 0.22) / 1.05);
+          const rect = document.createElementNS(svgNS, "rect");
+          rect.setAttribute("x", (x + gap / 2).toFixed(2));
+          rect.setAttribute("y", (y0 + gap / 2).toFixed(2));
+          rect.setAttribute("width", Math.max(0.35, tileW - gap).toFixed(2));
+          rect.setAttribute("height", Math.max(0.35, y1 - y0 - gap).toFixed(2));
+          rect.setAttribute("fill", tileColor(row, col, light, sparks));
+          rect.classList.add("facet");
+          group.appendChild(rect);
+        }
+      }
     }
 
-    /** Opens the cracks a step on each beat, so the pumpkin splits in time. */
-    function crackPumpkin(position) {
-      const beats = (position - DROP_SECONDS) / BEAT_SECONDS;
-      const landed = Math.floor(beats) + Math.min(1, (beats - Math.floor(beats)) / 0.2);
-      const progress = Math.min(1, Math.max(0, (landed * BEAT_SECONDS + DROP_SECONDS - SONG_START_SECONDS) / (DROP_SECONDS - SONG_START_SECONDS)));
-      if (progress === crackedTo) {
-        return;
+    /** Silver mirror, with an occasional colored facet. */
+    function tileColor(row, col, light, sparks) {
+      if ((row * 5 + col * 3) % 9 === 0) {
+        return sparks[(row + col) % sparks.length];
       }
 
-      crackedTo = progress;
-      cracks.forEach(({ start, length, paths }) => {
-        const grown = Math.min(1, Math.max(0, (progress - start) / CRACK_GROW));
-        paths.forEach((path) => {
-          path.style.strokeDashoffset = String(length * (1 - grown));
-        });
-      });
+      const band = (row + col) % 4;
+      const shade = Math.max(96, Math.min(255, Math.round(138 + light * 112 - band * 14)));
+      const cool = band % 2 === 0 ? 8 : 0;
+      return `rgb(${shade}, ${shade}, ${Math.min(255, shade + cool)})`;
     }
-
-    /** Trembles harder as the drop nears and jolts on each beat. */
-    function shakePumpkin(progress, pulse, seconds) {
-      if (reduceMotion) {
-        return;
-      }
-
-      const tremble = 2.5 * progress ** 1.5;
-      const kick = 7 * progress ** 2 * pulse;
-      const x = Math.sin(seconds * 71) * tremble + Math.sin(seconds * 23) * kick;
-      const y = Math.cos(seconds * 59) * tremble * 0.6 + Math.cos(seconds * 31) * kick * 0.5;
-      const rotate = Math.sin(seconds * 37) * (0.6 + 1.4 * pulse) * progress ** 2;
-      const scale = 1 + 0.025 * progress + 0.03 * progress * pulse;
-      pumpkinStage.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${rotate.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
-    }
-
-    let heartPhase = 0;
-    let lastFrame = performance.now();
 
     /**
-     * A heartbeat that races as the face is carved, then pulses locked to the
-     * song's beat, building to the drop, where the pumpkin breaks.
+     * Moves the ball to a resting height.
+     * The timeout covers browsers that skip transitionend for very short drops.
      */
-    function tick(now) {
-      requestAnimationFrame(tick);
-      const position = breaking ? songClock(now) : null;
-      let level;
-      let pulse;
-      let flash = 0;
+    function fallTo(nextTop, done) {
+      const token = ++moveId;
+      busy = true;
+      ball.style.top = nextTop;
+      string.style.height = `calc(64px + ${nextTop} + ${CAP})`;
 
-      if (position === null) {
-        const period = HEARTBEAT_SECONDS * (1 - HEARTBEAT_RACE * carveStep);
-        heartPhase += (now - lastFrame) / 1000 / period;
-        level = breaking ? BREAK_LEVEL : CARVE_LEVEL + (BREAK_LEVEL - CARVE_LEVEL) * (carveStep / CARVE_STEPS);
-        pulse = heartbeat(heartPhase);
-      } else {
-        const beats = (position - DROP_SECONDS) / BEAT_SECONDS;
-        const sinceBeat = (beats - Math.floor(beats)) * BEAT_SECONDS;
+      const finish = (event) => {
+        if (event && event.propertyName && event.propertyName !== "top") {
+          return;
+        }
+        if (token !== moveId || landedId === token) {
+          return;
+        }
+        landedId = token;
+        ball.removeEventListener("transitionend", finish);
+        if (typeof done === "function") {
+          done();
+        }
+      };
 
-        if (position < DROP_SECONDS) {
-          const progress = Math.max(0, (position - SONG_START_SECONDS) / (DROP_SECONDS - SONG_START_SECONDS));
-          level = BREAK_LEVEL + (1 - BREAK_LEVEL) * progress ** 1.6;
-          // Each pulse lingers longer, so the last bars glow almost solid.
-          pulse = Math.exp(-sinceBeat / (0.12 + 0.2 * progress ** 2));
-          crackPumpkin(position);
-          shakePumpkin(progress, pulse, now / 1000);
+      ball.addEventListener("transitionend", finish);
+      const limit = reduceMotion ? 40 : (playing ? BEAT_S * 1000 : LAND_MS);
+      window.setTimeout(() => finish(), limit);
+    }
+
+    /** Flashes a few mirrors at a time, on an uneven beat. */
+    function glisten() {
+      if (reduceMotion || revealed) {
+        return;
+      }
+
+      const tiles = document.querySelectorAll("#facets .facet");
+      const count = 1 + Math.floor(Math.random() * 3);
+      for (let n = 0; n < count; n += 1) {
+        const tile = tiles[Math.floor(Math.random() * tiles.length)];
+        if (!tile || tile.dataset.lit === "1") {
+          continue;
+        }
+        tile.dataset.lit = "1";
+        const previous = tile.getAttribute("fill");
+        tile.setAttribute("fill", Math.random() < 0.8 ? "#ffffff" : "#fff4c2");
+        window.setTimeout(() => {
+          tile.setAttribute("fill", previous);
+          tile.dataset.lit = "0";
+        }, 50 + Math.random() * 140);
+      }
+
+      window.setTimeout(glisten, 70 + Math.random() * 280);
+    }
+
+    /** The opening drop just arms the ball. The clicked sequence is scheduled on the beat. */
+    function onLanded() {
+      if (opened) {
+        return;
+      }
+      opened = true;
+      ready = true;
+      busy = false;
+    }
+
+    /**
+     * Runs fn on a song beat. Falls back to the clock if playback has not moved yet.
+     * beat 0 is the click. The first drop is the next beat.
+     */
+    function atBeat(index, fn) {
+      const armed = performance.now();
+      const songAtArm = songSeconds();
+      const check = () => {
+        const songNow = songSeconds();
+        const songMoved = songNow > songAtArm + 0.05;
+        const elapsed = songMoved ? songNow - songAtArm : (performance.now() - armed) / 1000;
+        const remaining = index * BEAT_S - elapsed;
+        if (remaining <= 0.012) {
+          fn();
+          return;
+        }
+        window.setTimeout(check, Math.min(40, Math.max(12, (remaining - 0.012) * 1000)));
+      };
+      check();
+    }
+
+    /** Drop on a beat, shake on the next, three times, then the photo. */
+    function playSequence() {
+      hanger.style.setProperty("--drop", `${BEAT_S}s`);
+      hanger.style.setProperty("--ease", "cubic-bezier(0.45, 0, 1, 1)");
+      ball.getBoundingClientRect();
+
+      const plan = ["drop", "shake", "drop", "shake", "drop", "shake", "yuma"];
+      plan.forEach((action, step) => {
+        atBeat(step + 1, () => runBeat(action));
+      });
+    }
+
+    /** One beat of the clicked sequence. */
+    function runBeat(action) {
+      if (action === "drop") {
+        if (clicks >= CLICKS) {
+          return;
+        }
+        clicks += 1;
+        fallTo(RESTS[clicks]);
+        return;
+      }
+
+      if (action === "shake") {
+        shake(() => {});
+        return;
+      }
+
+      showYuma(REVEAL_BEAT);
+    }
+
+    /** Slams the photo in on its beat, one beat before the first flash. */
+    function showYuma(revealIndex) {
+      hanger.classList.add("is-gone");
+      ball.setAttribute("aria-hidden", "true");
+      ball.blur();
+      revealed = true;
+      document.body.classList.add("is-yuma");
+      track.volume = 1;
+
+      const now = songSeconds();
+      const index = Number.isFinite(revealIndex) ? revealIndex : Math.round(now / BEAT_S);
+      firstFlashBeat = index + 1;
+      const rawFlyer = (now > 0.2 ? now : index * BEAT_S) + FLYER_MS / 1000;
+      // One fewer normal flash before the left-to-right beam, so the beams, the bright pair, and the letters stay a beat earlier.
+      flyerSongTime = Math.round(rawFlyer / BEAT_S) * BEAT_S - BEAT_S;
+      flashStrobe();
+      const untilFlyer = Math.max(0, (flyerSongTime - songSeconds()) * 1000);
+      window.setTimeout(() => {
+        document.body.classList.add("is-flyer");
+      }, untilFlyer);
+    }
+
+    /** Playhead position in the original song, including a skipped opening. */
+    function songSeconds() {
+      const played = Number.isFinite(track.currentTime) ? track.currentTime : 0;
+      if (String(track.src).startsWith("blob:")) {
+        return SONG_START_SECONDS + played;
+      }
+      return played;
+    }
+
+    /** Flashes red or white on each beat, locked to the song. */
+    function flashStrobe() {
+      if (!document.body.classList.contains("is-yuma") || reduceMotion) {
+        strobe.style.opacity = "0";
+        return;
+      }
+
+      const beat = 60 / BPM;
+      const time = songSeconds();
+      const index = Math.floor(time / beat);
+      const into = time - index * beat;
+
+      if (index < firstFlashBeat) {
+        const untilFlash = Math.max(16, (firstFlashBeat * beat - time) * 1000);
+        window.setTimeout(flashStrobe, untilFlash);
+        return;
+      }
+
+      const opening = index === firstFlashBeat && lastBeat !== firstFlashBeat;
+      if ((into < 0.12 || (opening && into < 0.4)) && index !== lastBeat) {
+        lastBeat = index;
+        const lastBefore = Math.floor((flyerSongTime - 0.001) / beat);
+        if (index === lastBefore - 3) {
+          runSweep("across");
+        } else if (index === lastBefore - 2) {
+          runSweep("right");
         } else {
-          shatterPumpkin();
-          const sinceDrop = position - DROP_SECONDS;
-          flash = Math.exp(-sinceDrop / 0.3);
-          pulse = Math.exp(-sinceBeat / 0.16);
-          level = FLYER_LEVEL + (1 - FLYER_LEVEL) * Math.exp(-sinceDrop / 2);
-          skullField.style.setProperty("--pulse", pulse.toFixed(3));
+          const hard = index === lastBefore || index === lastBefore - 1;
+          strobe.style.background = Math.random() < 0.5 ? "#ff2a2a" : "#fff";
+          strobe.style.opacity = hard ? "0.48" : "0.24";
+          window.setTimeout(() => {
+            strobe.style.opacity = "0";
+          }, beat * 280);
         }
       }
 
-      if (breaking && !broken && !reduceMotion) {
-        summon.style.transform = `scale(${(1 + 0.05 * pulse * level).toFixed(4)})`;
-      }
-      lastFrame = now;
-      paintVignette(level, pulse, flash);
+      const wait = Math.max(16, ((index + 1) * beat - time) * 1000);
+      window.setTimeout(flashStrobe, wait);
     }
-    requestAnimationFrame(tick);
 
-    document.addEventListener("pointerdown", () => {
-      unlockAudio();
-      carve();
-    });
-    document.addEventListener("touchend", unlockAudio);
+    /** First beam crosses left to right. The next beat crosses right to left. */
+    function runSweep(kind) {
+      sweep.classList.remove("is-across", "is-from-right");
+      void sweep.offsetWidth;
+      sweep.classList.add(kind === "right" ? "is-from-right" : "is-across");
+    }
+
+    /** Jolts the whole scene once, a little harder on each hit. */
+    function shake(done) {
+      if (reduceMotion) {
+        done();
+        return;
+      }
+
+      let finished = false;
+      const stop = (event) => {
+        if (event && event.animationName !== "shake") {
+          return;
+        }
+        if (finished) {
+          return;
+        }
+        finished = true;
+        world.removeEventListener("animationend", stop);
+        world.classList.remove("is-shaking");
+        done();
+      };
+
+      world.style.setProperty("--hit", String(clicks));
+      world.classList.add("is-shaking");
+      world.addEventListener("animationend", stop);
+      window.setTimeout(() => stop(), SHAKE_MS);
+    }
+
+
+    /** True when the browser can jump to the cue instead of playing the opening. */
+    function canSeekToCue() {
+      try {
+        return track.seekable.length > 0
+          && track.seekable.end(track.seekable.length - 1) >= SONG_START_SECONDS;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    /** Plays the trimmed file when a normal seek would snap back to the start. */
+    function playFromCue() {
+      if (!cueUrl || canSeekToCue()) {
+        return false;
+      }
+      track.src = cueUrl;
+      return true;
+    }
+
+    /** Starts Yosemite silent, eight seconds in, and rises in a straight line until the stage appears. */
+    function startSong() {
+      if (songStarted) {
+        return;
+      }
+
+      songStarted = true;
+      // Exact zero can leave the element silent after playback starts.
+      track.volume = 0.001;
+      if (!playFromCue()) {
+        try {
+          track.currentTime = SONG_START_SECONDS;
+        } catch (error) {
+          playFromCue();
+        }
+      }
+      const pending = track.play();
+      if (pending && typeof pending.catch === "function") {
+        pending.catch((error) => {
+          if (error && error.name === "NotAllowedError") {
+            songStarted = false;
+          }
+        });
+      }
+      track.addEventListener("playing", () => {
+        if (String(track.src).startsWith("blob:")) {
+          return;
+        }
+        if (track.currentTime < 1) {
+          try {
+            track.currentTime = SONG_START_SECONDS;
+          } catch (error) {
+            playFromCue();
+          }
+        }
+      }, { once: true });
+
+      const started = performance.now();
+      const fade = () => {
+        if (!songStarted || revealed) {
+          return;
+        }
+        const passed = Math.min(1, (performance.now() - started) / REVEAL_MS);
+        track.volume = START_VOLUME + (1 - START_VOLUME) * passed;
+        if (passed < 1) {
+          window.setTimeout(fade, 50);
+        }
+      };
+      window.setTimeout(fade, 50);
+    }
+
+    /** Finds the next mp3 frame so a trimmed copy still decodes. */
+    function findFrame(bytes, guess) {
+      const end = Math.min(bytes.length - 4, Math.max(0, guess) + 8192);
+      for (let i = Math.max(0, guess); i < end; i += 1) {
+        if (bytes[i] !== 0xff) {
+          continue;
+        }
+        const header = bytes[i + 1];
+        if ((header & 0xe0) !== 0xe0 || (header & 0x18) === 0x08 || (header & 0x06) === 0) {
+          continue;
+        }
+        return i;
+      }
+      return Math.max(0, guess);
+    }
+
+    /**
+     * Builds a copy that already starts at the cue.
+     * Some previews cannot seek, so the play button would otherwise restart at the top.
+     */
+    function prepareCue() {
+      if (cueUrl || canSeekToCue()) {
+        return;
+      }
+
+      fetch(SONG_FILE)
+        .then((response) => response.arrayBuffer())
+        .then((buffer) => {
+          if (canSeekToCue()) {
+            return;
+          }
+          const bytes = new Uint8Array(buffer);
+          const duration = Number.isFinite(track.duration) ? track.duration : 362.5;
+          const guess = Math.floor(bytes.length * (SONG_START_SECONDS / duration));
+          cueUrl = URL.createObjectURL(new Blob([bytes.subarray(findFrame(bytes, guess))], { type: "audio/mpeg" }));
+          if (!songStarted || track.currentTime >= 1 || String(track.src).startsWith("blob:")) {
+            return;
+          }
+          const volume = track.volume;
+          track.src = cueUrl;
+          track.volume = volume;
+          const pending = track.play();
+          if (pending && typeof pending.catch === "function") {
+            pending.catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
+    /** Starts the spaced drops. Later clicks do nothing. */
+    function dropAgain() {
+      if (!ready || busy || playing) {
+        return;
+      }
+
+      playing = true;
+      ball.style.cursor = "default";
+      startSong();
+      playSequence();
+    }
+
+    paintFacets();
+    glisten();
+
+    /** Drops the ball in. A timer covers browsers that pause animation frames in a hidden tab. */
+    let entranceStarted = false;
+    function startEntrance() {
+      if (entranceStarted) {
+        return;
+      }
+      entranceStarted = true;
+      hanger.classList.add("is-live");
+      ball.getBoundingClientRect();
+      fallTo(RESTS[0], onLanded);
+    }
+
+    requestAnimationFrame(() => requestAnimationFrame(startEntrance));
+    window.setTimeout(startEntrance, 60);
+
+    ball.addEventListener("click", dropAgain);
+    if (track.readyState >= 1) {
+      prepareCue();
+    } else {
+      track.addEventListener("loadedmetadata", prepareCue);
+    }
   </script>
 </body>
 </html>
