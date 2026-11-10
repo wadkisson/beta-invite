@@ -201,6 +201,7 @@
       inset: -48px;
       z-index: 1;
       background: #000;
+      cursor: pointer;
       transition: opacity 0.06s linear;
     }
 
@@ -832,6 +833,7 @@
 
       playing = true;
       ball.style.cursor = "default";
+      world.style.cursor = "default";
       startSong();
       playSequence();
     }
@@ -854,7 +856,7 @@
     requestAnimationFrame(() => requestAnimationFrame(startEntrance));
     window.setTimeout(startEntrance, 60);
 
-    ball.addEventListener("click", dropAgain);
+    document.addEventListener("click", dropAgain);
     if (track.readyState >= 1) {
       prepareCue();
     } else {
